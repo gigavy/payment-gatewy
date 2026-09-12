@@ -21,7 +21,20 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
+        // Apply theme immediately to prevent FOUC
+        (function() {
+            try {
+                const savedTheme = localStorage.getItem('site_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+                if (savedTheme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            } catch(e) {}
+        })();
+
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: {
@@ -39,12 +52,136 @@
         }
     </script>
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; transition: background-color 0.2s ease, color 0.2s ease; }
         .sidebar-link { transition: all 0.2s ease; }
         .sidebar-link:hover { background-color: rgba(255,255,255,0.1); color: white; }
         .sidebar-link.active { background-color: #4f46e5; color: white; border-radius: 0.5rem; }
         .sidebar-scroll::-webkit-scrollbar { display: none; }
-        .sidebar-scroll { -ms-overflow-style: none; scrollbar-width: none; }</style>
+        .sidebar-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Dark Mode Global Styles */
+        html.dark, html.dark body {
+            background-color: #0b0f19 !important;
+            color: #cbd5e1 !important;
+        }
+
+        html.dark header, html.dark #top-navbar {
+            background-color: #0f172a !important;
+            border-color: #1e293b !important;
+        }
+
+        html.dark .bg-white {
+            background-color: #111827 !important;
+            color: #f1f5f9 !important;
+        }
+
+        html.dark .bg-slate-50, 
+        html.dark .bg-gray-50, 
+        html.dark .bg-zinc-50 {
+            background-color: #0b0f19 !important;
+        }
+
+        html.dark .bg-slate-100, 
+        html.dark .bg-gray-100 {
+            background-color: #1e293b !important;
+        }
+
+        html.dark .border-slate-100,
+        html.dark .border-slate-200,
+        html.dark .border-slate-300,
+        html.dark .border-gray-100,
+        html.dark .border-gray-200,
+        html.dark .border-gray-300 {
+            border-color: #1f2937 !important;
+        }
+
+        html.dark .text-slate-900,
+        html.dark .text-slate-800,
+        html.dark .text-gray-900,
+        html.dark .text-gray-800 {
+            color: #f8fafc !important;
+        }
+
+        html.dark .text-slate-700,
+        html.dark .text-gray-700 {
+            color: #e2e8f0 !important;
+        }
+
+        html.dark .text-slate-600,
+        html.dark .text-slate-500,
+        html.dark .text-gray-600,
+        html.dark .text-gray-500 {
+            color: #94a3b8 !important;
+        }
+
+        html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+        html.dark select,
+        html.dark textarea {
+            background-color: #0b0f19 !important;
+            color: #f8fafc !important;
+            border-color: #374151 !important;
+        }
+
+        html.dark input::placeholder,
+        html.dark textarea::placeholder {
+            color: #64748b !important;
+        }
+
+        html.dark table thead th {
+            background-color: #111827 !important;
+            color: #94a3b8 !important;
+            border-color: #1f2937 !important;
+        }
+
+        html.dark table tbody tr {
+            border-color: #1f2937 !important;
+        }
+
+        html.dark table tbody tr:hover {
+            background-color: rgba(30, 41, 59, 0.45) !important;
+        }
+
+        html.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+        html.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]),
+        html.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]),
+        html.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+            border-color: #1f2937 !important;
+        }
+
+        html.dark .shadow-sm {
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.4) !important;
+        }
+
+        html.dark .shadow-md {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        /* Accent badges & cards in dark mode */
+        html.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.15) !important; }
+        html.dark .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.15) !important; }
+        html.dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.15) !important; }
+        html.dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.15) !important; }
+        html.dark .bg-purple-50 { background-color: rgba(168, 85, 247, 0.15) !important; }
+        html.dark .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.15) !important; }
+
+        html.dark .border-emerald-100, html.dark .border-emerald-200 { border-color: rgba(16, 185, 129, 0.3) !important; }
+        html.dark .border-amber-100, html.dark .border-amber-200 { border-color: rgba(245, 158, 11, 0.3) !important; }
+        html.dark .border-red-100, html.dark .border-red-200 { border-color: rgba(239, 68, 68, 0.3) !important; }
+        html.dark .border-blue-100, html.dark .border-blue-200 { border-color: rgba(59, 130, 246, 0.3) !important; }
+
+        /* SweetAlert2 dark theme */
+        html.dark .swal2-popup {
+            background-color: #111827 !important;
+            color: #f8fafc !important;
+            border: 1px solid #374151 !important;
+        }
+        html.dark .swal2-title {
+            color: #f8fafc !important;
+        }
+        html.dark .swal2-html-container {
+            color: #cbd5e1 !important;
+        }
+    </style>
     
     {% block extra_head %}{% endblock %}
 </head>
@@ -117,10 +254,41 @@
     <!-- Main Content -->
     <div class="flex-1 flex flex-col h-full overflow-hidden">
         
-        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-end px-6 shrink-0 z-10 shadow-sm">
-            <div class="flex items-center gap-2 bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-full text-xs font-bold border border-emerald-200">
-                <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                Live Mode
+        <header id="top-navbar" class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-10 shadow-sm transition-colors duration-200">
+            <!-- Left Side: Landing Page Quick Link -->
+            <div class="flex items-center gap-3">
+                <a href="/" target="_blank" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:text-indigo-600 bg-slate-100 hover:bg-slate-200/80 border border-slate-200 transition-all shadow-xs" title="Open Landing Page in new tab">
+                    <i class="fa-solid fa-arrow-up-right-from-square text-indigo-500 text-[11px]"></i>
+                    <span>Landing Page</span>
+                </a>
+            </div>
+
+            <!-- Right Side: Theme Switcher & Status -->
+            <div class="flex items-center gap-4">
+                <!-- Theme Section (Dark & Light) in Navbar -->
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-semibold text-slate-500 hidden sm:inline-flex items-center gap-1">
+                        <i class="fa-solid fa-circle-half-stroke text-slate-400"></i> Theme:
+                    </span>
+                    <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200" id="theme-nav-container">
+                        <button type="button" id="theme-btn-light" onclick="setSiteTheme('light')" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all" title="Switch to Light Theme">
+                            <i class="fa-solid fa-sun text-amber-500 text-xs"></i>
+                            <span>Light</span>
+                        </button>
+                        <button type="button" id="theme-btn-dark" onclick="setSiteTheme('dark')" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all" title="Switch to Dark Theme">
+                            <i class="fa-solid fa-moon text-indigo-400 text-xs"></i>
+                            <span>Dark</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="h-5 w-px bg-slate-200" id="nav-divider"></div>
+
+                <!-- Live Mode Status -->
+                <div class="flex items-center gap-2 bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-full text-xs font-bold border border-emerald-200" id="live-mode-badge">
+                    <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                    Live Mode
+                </div>
             </div>
         </header>
 
@@ -157,6 +325,49 @@
                 if (e.target === pModal) hideCreatePaymentModal();
             });
         }
+
+        /* --- Website Theme Controller (Dark & Light) --- */
+        function applySiteTheme(theme) {
+            const htmlEl = document.documentElement;
+            const btnLight = document.getElementById('theme-btn-light');
+            const btnDark = document.getElementById('theme-btn-dark');
+            const container = document.getElementById('theme-nav-container');
+
+            if (theme === 'dark') {
+                htmlEl.classList.add('dark');
+                if (container) {
+                    container.className = "flex items-center bg-slate-800 p-1 rounded-xl border border-slate-700";
+                }
+                if (btnDark) {
+                    btnDark.className = "flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 text-white shadow-sm transition-all";
+                }
+                if (btnLight) {
+                    btnLight.className = "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-slate-400 hover:text-slate-200 transition-all";
+                }
+            } else {
+                htmlEl.classList.remove('dark');
+                if (container) {
+                    container.className = "flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200";
+                }
+                if (btnLight) {
+                    btnLight.className = "flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-white text-slate-900 shadow-sm border border-slate-200 transition-all";
+                }
+                if (btnDark) {
+                    btnDark.className = "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-slate-500 hover:text-slate-800 transition-all";
+                }
+            }
+        }
+
+        function setSiteTheme(theme) {
+            localStorage.setItem('site_theme', theme);
+            applySiteTheme(theme);
+        }
+
+        // Initialize active theme on page ready
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('site_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            applySiteTheme(savedTheme);
+        });
     </script>
 </body>
 </html>

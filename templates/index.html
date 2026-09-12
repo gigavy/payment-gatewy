@@ -176,19 +176,34 @@ document.addEventListener('DOMContentLoaded', function() {
     <div class="shell nav-inner">
       <a class="brand" href="/" style="padding:0;"><span style="font-weight: 800; font-size: 24px; color: white; letter-spacing: -0.5px;">NovaPay</span></a>
       <ul class="links">
-        <li><a href="index.php#flow">How it works</a></li>
-        <li><a href="index.php#api">API</a></li>
-        <li><a href="blog/how-it-works.php">Architecture</a></li>
+        <li><a href="#flow">How it works</a></li>
+        <li><a href="#api">API</a></li>
         <li><a href="/api_docs">Docs</a></li>
       </ul>
-      <div class="nav-actions"><a class="login" href="/login">Sign in</a><a class="nav-cta" href="/register">Get API key <span>↗</span></a></div>
+      <div class="nav-actions">
+        {% if logged_in %}
+          <a class="login" href="/dashboard">Dashboard</a>
+          <a class="nav-cta" href="/dashboard">Go to Dashboard <span>→</span></a>
+        {% else %}
+          <a class="login" href="/login">Sign in</a>
+          <a class="nav-cta" href="/register">Get API key <span>↗</span></a>
+        {% endif %}
+      </div>
       <button class="menu" aria-label="Open menu" onclick="toggleMobileNav()"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M4 7h16M4 12h16M4 17h16" />
         </svg></button>
     </div>
   </header>
-  <nav id="mobile-nav" class="mobile-nav"><a href="#flow">How it works</a><a href="#api">API</a><a href="blog/how-it-works.php">Architecture</a><a href="/api_docs">Docs</a>
-    <div class="mobile-menu-actions"><a class="mobile-register" href="/register">Register</a><a class="mobile-login" href="/login">Login</a></div>
+  <nav id="mobile-nav" class="mobile-nav"><a href="#flow">How it works</a><a href="#api">API</a><a href="/api_docs">Docs</a>
+    <div class="mobile-menu-actions">
+      {% if logged_in %}
+        <a class="mobile-register" href="/dashboard">Dashboard</a>
+        <a class="mobile-login" href="/logout">Logout</a>
+      {% else %}
+        <a class="mobile-register" href="/register">Register</a>
+        <a class="mobile-login" href="/login">Login</a>
+      {% endif %}
+    </div>
   </nav>
   <div id="mobile-overlay" class="mobile-overlay" onclick="closeMobileNav()"></div>
   <main>
@@ -198,7 +213,17 @@ document.addEventListener('DOMContentLoaded', function() {
           <div class="hero-eyebrow-wrap"><div class="eyebrow"><i class="fa-solid fa-bolt" style="color: #f59e0b; margin-right: 6px;"></i> NovaPay &amp; UPI / Paytm payment gateway for developers</div></div>
           <div class="hero-h1-wrap"><h1 style="font-size:clamp(40px, 5vw, 68px);">The <em>100% Free</em> NovaPay API.</h1></div>
           <div class="hero-copy-wrap"><p class="hero-copy">Create a NovaPay (UPI / Paytm) payment link, show a UPI QR, and know exactly when the money arrives. NovaPay gives Indian developers a simple path from checkout to confirmation — <b>100% Free Forever with 0% Transaction Fees.</b></p></div>
-          <div class="hero-actions-wrap"><div class="hero-actions"><a class="primary" href="/register">Create your free account <span>→</span></a><a class="secondary" href="/api_docs">Read the API docs <span>↗</span></a></div></div>
+          <div class="hero-actions-wrap">
+            <div class="hero-actions">
+              {% if logged_in %}
+                <a class="primary" href="/dashboard">Go to Dashboard <span>→</span></a>
+                <a class="secondary" href="/api_docs">Read the API docs <span>↗</span></a>
+              {% else %}
+                <a class="primary" href="/register">Create your free account <span>→</span></a>
+                <a class="secondary" href="/api_docs">Read the API docs <span>↗</span></a>
+              {% endif %}
+            </div>
+          </div>
           <div class="hero-proof-wrap"><div class="proof"><span><b>✓</b> 100% Free Forever</span><span><b>✓</b> 0% Transaction Fees</span><span><b>✓</b> Unlimited API Calls</span></div></div>
         </div>
         <div class="hero-visual">

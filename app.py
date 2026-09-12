@@ -811,12 +811,14 @@ def logout():
 # ============================================
 
 @app.route('/')
+@app.route('/home')
+@app.route('/landing')
 def index():
-    if 'user_id' in session:
-        return redirect(url_for('dashboard'))
     yt_link = get_sys_setting('youtube_link', '')
     wa_number = get_sys_setting('support_whatsapp', '')
-    return render_template('index.html', yt_link=yt_link, wa_number=wa_number)
+    logged_in = 'user_id' in session
+    return render_template('index.html', yt_link=yt_link, wa_number=wa_number, logged_in=logged_in)
+
 
 
 @app.route('/mark_paid/<txn_id>', methods=['POST'])
