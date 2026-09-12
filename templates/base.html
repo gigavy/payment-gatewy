@@ -230,6 +230,13 @@
                 <i class="fa-solid fa-palette w-5 text-center"></i> Customize Appearance
             </a>
             
+            <!-- Direct Owner Support Button -->
+            <button type="button" onclick="openOwnerSupportModal()" class="w-full sidebar-link flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-all text-left group">
+                <i class="fa-solid fa-headset w-5 text-center text-emerald-400 group-hover:scale-110 transition-transform"></i>
+                <span>Support</span>
+                <span class="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Direct</span>
+            </button>
+            
             <a href="/settings" class="sidebar-link {% if request.path == '/settings' %}active{% endif %} flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-300">
                 <i class="fa-solid fa-gear w-5 text-center"></i> Settings
             </a>
@@ -298,6 +305,90 @@
 
     
 
+    <!-- ==================== OWNER DIRECT SUPPORT MODAL ==================== -->
+    <div id="ownerSupportModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4 transition-all duration-200">
+        <div id="ownerSupportModalContent" class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-100 dark:border-slate-800 transform transition-all duration-200 scale-95">
+            <!-- Modal Header -->
+            <div class="flex items-start justify-between gap-4 mb-5">
+                <div class="flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xl font-bold border border-emerald-100 dark:border-emerald-800">
+                        <i class="fa-solid fa-headset"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-black text-slate-900 dark:text-white">Direct Owner Support</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Need instant help, limit changes, or tech support?</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeOwnerSupportModal()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+
+            <!-- Channels List -->
+            <div class="space-y-3 mb-5">
+                <!-- 1. WhatsApp -->
+                <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between gap-3 hover:border-emerald-300 dark:hover:border-emerald-700 transition">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-xl shrink-0">
+                            <i class="fa-brands fa-whatsapp"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">WhatsApp Direct</div>
+                            <div class="text-sm font-black text-slate-900 dark:text-white font-mono truncate">+91 7055357207</div>
+                        </div>
+                    </div>
+                    <a href="https://wa.me/917055357207?text=Hi%20Karan,%20I%20need%20support%20regarding%20NovaPay" target="_blank" rel="noopener noreferrer" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition shadow-sm flex items-center gap-1.5 shrink-0">
+                        <span>Message</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                    </a>
+                </div>
+
+                <!-- 2. Telegram -->
+                <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between gap-3 hover:border-sky-300 dark:hover:border-sky-700 transition">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center text-xl shrink-0">
+                            <i class="fa-brands fa-telegram"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Telegram</div>
+                            <div class="text-sm font-black text-slate-900 dark:text-white truncate">@karanbhaiyaa</div>
+                        </div>
+                    </div>
+                    <a href="https://t.me/karanbhaiyaa" target="_blank" rel="noopener noreferrer" class="px-3.5 py-2 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-xl text-xs transition shadow-sm flex items-center gap-1.5 shrink-0">
+                        <span>Contact</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                    </a>
+                </div>
+
+                <!-- 3. Instagram -->
+                <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between gap-3 hover:border-pink-300 dark:hover:border-pink-700 transition">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white flex items-center justify-center text-lg shrink-0 shadow-xs">
+                            <i class="fa-brands fa-instagram"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Instagram</div>
+                            <div class="text-sm font-black text-slate-900 dark:text-white truncate">_4451karan</div>
+                        </div>
+                    </div>
+                    <a href="https://instagram.com/_4451karan" target="_blank" rel="noopener noreferrer" class="px-3.5 py-2 bg-gradient-to-r from-purple-600 via-pink-600 to-rose-500 hover:opacity-95 text-white font-bold rounded-xl text-xs transition shadow-sm flex items-center gap-1.5 shrink-0">
+                        <span>Profile</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Footer note -->
+            <div class="pt-3.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                <span class="flex items-center gap-1.5 font-medium">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Direct Owner Contact
+                </span>
+                <span>Fast reply on WhatsApp & Telegram</span>
+            </div>
+        </div>
+    </div>
+
     <script>
         const pModal = document.getElementById('paymentModal');
         const pModalContent = document.getElementById('paymentModalContent');
@@ -321,6 +412,36 @@
         if (pModal) {
             pModal.addEventListener('click', (e) => {
                 if (e.target === pModal) hideCreatePaymentModal();
+            });
+        }
+
+        /* --- Direct Owner Support Modal Handlers --- */
+        function openOwnerSupportModal() {
+            const m = document.getElementById('ownerSupportModal');
+            const c = document.getElementById('ownerSupportModalContent');
+            if (!m || !c) return;
+            m.classList.remove('hidden');
+            setTimeout(() => {
+                m.classList.remove('opacity-0');
+                c.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeOwnerSupportModal() {
+            const m = document.getElementById('ownerSupportModal');
+            const c = document.getElementById('ownerSupportModalContent');
+            if (!m || !c) return;
+            m.classList.add('opacity-0');
+            c.classList.add('scale-95');
+            setTimeout(() => {
+                m.classList.add('hidden');
+            }, 200);
+        }
+
+        const supportM = document.getElementById('ownerSupportModal');
+        if (supportM) {
+            supportM.addEventListener('click', (e) => {
+                if (e.target === supportM) closeOwnerSupportModal();
             });
         }
 
