@@ -178,51 +178,7 @@ def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     
-    # Run column migrations gracefully
-    def add_col(table, col, def_type="TEXT"):
-        try:
-            c.execute(f"ALTER TABLE {table} ADD COLUMN {col} {def_type}")
-        except:
-            pass
-            
-    try:
-        add_col('transactions', 'callback_url')
-        add_col('transactions', 'expires_at')
-        add_col('transactions', 'customer_email')
-        add_col('transactions', 'merchant_order_id')
-        add_col('transactions', 'customer_name')
-        
-        add_col('users', 'theme')
-        add_col('users', 'profile_pic')
-        add_col('users', 'merchant_id')
-        add_col('users', 'provider')
-        add_col('users', 'role')
-        add_col('users', 'plan_name')
-        add_col('users', 'plan_expiry')
-        add_col('users', 'email')
-        add_col('users', 'mobile')
-        add_col('users', 'business_name')
-        add_col('users', 'business_website')
-        add_col('users', 'business_logo')
-        add_col('users', 'business_support_email')
-        add_col('users', 'payment_expiry_minutes', 'INTEGER DEFAULT 5')
-        add_col('users', 'success_redirect_url')
-        add_col('users', 'failed_redirect_url')
-        add_col('users', 'allowed_redirect_domains')
-        add_col('users', 'live_api_key_hash')
-        add_col('users', 'live_api_key_hint')
-        add_col('users', 'test_api_key_hash')
-        add_col('users', 'test_api_key_hint')
-        add_col('users', 'telegram_bot_token_enc')
-        add_col('users', 'telegram_chat_id_enc')
-        add_col('users', 'totp_secret_enc')
-        add_col('users', 'totp_enabled', 'INTEGER DEFAULT 0')
-        add_col('users', 'accent_color', "TEXT DEFAULT '#4f46e5'")
-        add_col('users', 'layout_density', "TEXT DEFAULT 'comfortable'")
-    except:
-        pass
-
-    
+    # 1. Base table definitions with complete column definitions
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -235,19 +191,34 @@ def init_db():
             created_at DATETIME,
             display_name TEXT DEFAULT 'Merchant',
             theme TEXT DEFAULT 'default',
-            provider TEXT DEFAULT 'fampay'
+            provider TEXT DEFAULT 'fampay',
+            profile_pic TEXT,
+            merchant_id TEXT,
+            role TEXT DEFAULT 'merchant',
+            plan_name TEXT DEFAULT 'Free',
+            plan_expiry TEXT,
+            email TEXT,
+            mobile TEXT,
+            business_name TEXT,
+            business_website TEXT,
+            business_logo TEXT,
+            business_support_email TEXT,
+            payment_expiry_minutes INTEGER DEFAULT 5,
+            success_redirect_url TEXT,
+            failed_redirect_url TEXT,
+            allowed_redirect_domains TEXT,
+            live_api_key_hash TEXT,
+            live_api_key_hint TEXT,
+            test_api_key_hash TEXT,
+            test_api_key_hint TEXT,
+            telegram_bot_token_enc TEXT,
+            telegram_chat_id_enc TEXT,
+            totp_secret_enc TEXT,
+            totp_enabled INTEGER DEFAULT 0,
+            accent_color TEXT DEFAULT '#4f46e5',
+            layout_density TEXT DEFAULT 'comfortable'
         )
     ''')
-    try: c.execute("ALTER TABLE users ADD COLUMN display_name TEXT DEFAULT 'Merchant'")
-    except: pass
-    try: c.execute("ALTER TABLE users ADD COLUMN theme TEXT DEFAULT 'default'")
-    except: pass
-    try: c.execute("ALTER TABLE users ADD COLUMN provider TEXT DEFAULT 'fampay'")
-    except: pass
-    try: c.execute("ALTER TABLE users ADD COLUMN username TEXT UNIQUE")
-    except: pass
-    try: c.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
-    except: pass
     
     c.execute('''
         CREATE TABLE IF NOT EXISTS transactions (
@@ -261,25 +232,10 @@ def init_db():
             paid_at DATETIME,
             merchant_order_id TEXT,
             customer_name TEXT,
+            customer_email TEXT,
             callback_url TEXT
         )
     ''')
-    try: c.execute("ALTER TABLE transactions ADD COLUMN merchant_order_id TEXT")
-    except: pass
-    try: c.execute("ALTER TABLE transactions ADD COLUMN customer_name TEXT")
-    except: pass
-    try: c.execute("ALTER TABLE transactions ADD COLUMN callback_url TEXT")
-    except: pass
-    try: c.execute("ALTER TABLE transactions ADD COLUMN customer_email TEXT")
-    except: pass
-    try: c.execute("ALTER TABLE users ADD COLUMN profile_pic TEXT")
-    except: pass
-    try: c.execute("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'merchant'")
-    except: pass
-    try: c.execute("ALTER TABLE users ADD COLUMN plan_name TEXT DEFAULT 'Free'")
-    except: pass
-    try: c.execute("ALTER TABLE users ADD COLUMN plan_expiry TEXT")
-    except: pass
 
     c.execute("CREATE TABLE IF NOT EXISTS system_settings (key TEXT PRIMARY KEY, value TEXT)")
 
@@ -348,59 +304,118 @@ def init_db():
             expires_at DATETIME
         )
     ''')
-    
+    conn.commit()
+
+    # 2. Dynamic column migrations for pre-existing databases
+    c.execute("PRAGMA table_info(users)")
+    existing_user_cols = {row[1] for row in c.fetchall()}
+    user_migrations = [
+        ('display_name', "TEXT DEFAULT 'Merchant'"),
+        ('theme', "TEXT DEFAULT 'default'"),
+        ('provider', "TEXT DEFAULT 'fampay'"),
+        ('password_hash', "TEXT"),
+        ('profile_pic', "TEXT"),
+        ('merchant_id', "TEXT"),
+        ('role', "TEXT DEFAULT 'merchant'"),
+        ('plan_name', "TEXT DEFAULT 'Free'"),
+        ('plan_expiry', "TEXT"),
+        ('email', "TEXT"),
+        ('mobile', "TEXT"),
+        ('business_name', "TEXT"),
+        ('business_website', "TEXT"),
+        ('business_logo', "TEXT"),
+        ('business_support_email', "TEXT"),
+        ('payment_expiry_minutes', "INTEGER DEFAULT 5"),
+        ('success_redirect_url', "TEXT"),
+        ('failed_redirect_url', "TEXT"),
+        ('allowed_redirect_domains', "TEXT"),
+        ('live_api_key_hash', "TEXT"),
+        ('live_api_key_hint', "TEXT"),
+        ('test_api_key_hash', "TEXT"),
+        ('test_api_key_hint', "TEXT"),
+        ('telegram_bot_token_enc', "TEXT"),
+        ('telegram_chat_id_enc', "TEXT"),
+        ('totp_secret_enc', "TEXT"),
+        ('totp_enabled', "INTEGER DEFAULT 0"),
+        ('accent_color', "TEXT DEFAULT '#4f46e5'"),
+        ('layout_density', "TEXT DEFAULT 'comfortable'")
+    ]
+    for col, col_def in user_migrations:
+        if col not in existing_user_cols:
+            try:
+                c.execute(f"ALTER TABLE users ADD COLUMN {col} {col_def}")
+                conn.commit()
+            except Exception:
+                pass
+
+    c.execute("PRAGMA table_info(transactions)")
+    existing_txn_cols = {row[1] for row in c.fetchall()}
+    txn_migrations = [
+        ('callback_url', "TEXT"),
+        ('expires_at', "DATETIME"),
+        ('customer_email', "TEXT"),
+        ('merchant_order_id', "TEXT"),
+        ('customer_name', "TEXT")
+    ]
+    for col, col_def in txn_migrations:
+        if col not in existing_txn_cols:
+            try:
+                c.execute(f"ALTER TABLE transactions ADD COLUMN {col} {col_def}")
+                conn.commit()
+            except Exception:
+                pass
+
     conn.commit()
     conn.close()
 
+# Run database setup immediately on module load so all tables and migrations are present under WSGI/Render
+init_db()
+
 def get_user(user_id):
     conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
     c = conn.cursor()
-    c.execute("""SELECT user_id, username, upi_id, gmail, app_pass, api_key, created_at,
-                        display_name, theme, provider, profile_pic, role, plan_name, plan_expiry,
-                        email, mobile, business_name, business_website, business_logo, business_support_email,
-                        payment_expiry_minutes, success_redirect_url, failed_redirect_url, allowed_redirect_domains,
-                        live_api_key_hash, live_api_key_hint, test_api_key_hash, test_api_key_hint,
-                        telegram_bot_token_enc, telegram_chat_id_enc, totp_secret_enc, totp_enabled,
-                        accent_color, layout_density, password_hash
-                 FROM users WHERE user_id = ?""", (user_id,))
+    c.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
     row = c.fetchone()
     conn.close()
     if row:
+        d = dict(row)
+        api_k = d.get('api_key') or ''
         return {
-            "user_id": row[0],
-            "username": row[1],
-            "upi_id": row[2],
-            "gmail": row[3],
-            "app_pass": row[4],
-            "api_key": row[5],
-            "created_at": row[6],
-            "display_name": row[7] or "Merchant",
-            "theme": row[8] or "default",
-            "provider": row[9] or "fampay",
-            "profile_pic": row[10],
-            "role": row[11] or "merchant",
-            "plan_name": row[12] or "Free",
-            "plan_expiry": row[13],
-            "email": row[14] or "",
-            "mobile": row[15] or "",
-            "business_name": row[16] or (row[7] or "Merchant"),
-            "business_website": row[17] or "",
-            "business_logo": row[18] or row[10],
-            "business_support_email": row[19] or (row[14] or ""),
-            "payment_expiry_minutes": int(row[20]) if row[20] else 5,
-            "success_redirect_url": row[21] or "",
-            "failed_redirect_url": row[22] or "",
-            "allowed_redirect_domains": row[23] or "",
-            "live_api_key_hash": row[24],
-            "live_api_key_hint": row[25] or (row[5][-4:] if row[5] and len(row[5]) >= 4 else "none"),
-            "test_api_key_hash": row[26],
-            "test_api_key_hint": row[27] or "none",
-            "telegram_configured": bool(row[28] and row[29]),
-            "telegram_chat_id": decrypt_pass(row[29]) if row[29] else "",
-            "totp_enabled": bool(row[31]),
-            "accent_color": row[32] or "#4f46e5",
-            "layout_density": row[33] or "comfortable",
-            "password_hash": row[34]
+            "user_id": d.get("user_id"),
+            "username": d.get("username"),
+            "upi_id": d.get("upi_id"),
+            "gmail": d.get("gmail"),
+            "app_pass": d.get("app_pass"),
+            "api_key": api_k,
+            "created_at": d.get("created_at"),
+            "display_name": d.get("display_name") or "Merchant",
+            "theme": d.get("theme") or "default",
+            "provider": d.get("provider") or "fampay",
+            "profile_pic": d.get("profile_pic"),
+            "role": d.get("role") or "merchant",
+            "plan_name": d.get("plan_name") or "Free",
+            "plan_expiry": d.get("plan_expiry"),
+            "email": d.get("email") or "",
+            "mobile": d.get("mobile") or "",
+            "business_name": d.get("business_name") or (d.get("display_name") or "Merchant"),
+            "business_website": d.get("business_website") or "",
+            "business_logo": d.get("business_logo") or d.get("profile_pic"),
+            "business_support_email": d.get("business_support_email") or (d.get("email") or ""),
+            "payment_expiry_minutes": int(d.get("payment_expiry_minutes") or 5),
+            "success_redirect_url": d.get("success_redirect_url") or "",
+            "failed_redirect_url": d.get("failed_redirect_url") or "",
+            "allowed_redirect_domains": d.get("allowed_redirect_domains") or "",
+            "live_api_key_hash": d.get("live_api_key_hash"),
+            "live_api_key_hint": d.get("live_api_key_hint") or (api_k[-4:] if len(api_k) >= 4 else "none"),
+            "test_api_key_hash": d.get("test_api_key_hash"),
+            "test_api_key_hint": d.get("test_api_key_hint") or "none",
+            "telegram_configured": bool(d.get("telegram_bot_token_enc") and d.get("telegram_chat_id_enc")),
+            "telegram_chat_id": decrypt_pass(d.get("telegram_chat_id_enc")) if d.get("telegram_chat_id_enc") else "",
+            "totp_enabled": bool(d.get("totp_enabled")),
+            "accent_color": d.get("accent_color") or "#4f46e5",
+            "layout_density": d.get("layout_density") or "comfortable",
+            "password_hash": d.get("password_hash")
         }
     return None
 
@@ -1668,21 +1683,22 @@ def checkout_page_by_id(txn_id):
         
     user_id, amount, status, callback_url, expires_at = txn
     
-    c.execute("""SELECT u.upi_id, u.display_name, u.theme, u.api_key, u.provider,
-                        u.business_name, u.business_website, u.business_logo, u.accent_color, u.profile_pic,
-                        u.success_redirect_url, u.failed_redirect_url
-                 FROM users u WHERE u.user_id = ?""", (user_id,))
-    user = c.fetchone()
     conn.close()
     
-    if not user or not user[0]:
+    user = get_user(user_id)
+    if not user or not user.get('upi_id'):
         return "<h1>Error: Merchant account not configured properly</h1>", 400
         
-    upi_id, display_name, theme, api_key, provider, b_name, b_web, b_logo, accent_color, prof_pic, succ_url, fail_url = user
-    final_display_name = b_name or display_name or 'Merchant'
-    final_logo = b_logo or prof_pic
-    final_accent = accent_color or '#4f46e5'
-    final_callback = callback_url or succ_url or ''
+    upi_id = user.get('upi_id')
+    final_display_name = user.get('business_name') or user.get('display_name') or 'Merchant'
+    final_logo = user.get('business_logo') or user.get('profile_pic')
+    final_accent = user.get('accent_color') or '#4f46e5'
+    final_callback = callback_url or user.get('success_redirect_url') or ''
+    theme = user.get('theme') or 'premium'
+    api_key = user.get('api_key') or ''
+    provider = user.get('provider') or 'fampay'
+    b_web = user.get('business_website') or ''
+    fail_url = user.get('failed_redirect_url') or ''
     
     payment_url = f"upi://pay?pa={upi_id}&pn={urllib.parse.quote(final_display_name)}&tr={txn_id}&am={amount}&cu=INR"
     
@@ -2277,13 +2293,19 @@ def system_logs_api():
     
     return jsonify([{"msg": log[0], "time": log[1]} for log in logs])
 
+def start_background_workers():
+    if not getattr(app, '_bg_workers_started', False):
+        app._bg_workers_started = True
+        t_gmail = threading.Thread(target=monitor_gmails, daemon=True)
+        t_gmail.start()
+
+# Start background monitor thread under both WSGI (Render/Gunicorn) and direct python
+start_background_workers()
+
 def main():
     init_db()
-    # Start background gmail reader
-    t_gmail = threading.Thread(target=monitor_gmails, daemon=True)
-    t_gmail.start()
-    
-    print(f"ðŸš€ FamPay Web Gateway Running on Port {PORT}...")
+    start_background_workers()
+    print(f"🚀 FamPay Web Gateway Running on Port {PORT}...")
     app.run(host='0.0.0.0', port=PORT, debug=False, use_reloader=False)
 
 if __name__ == "__main__":
