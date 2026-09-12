@@ -1,0 +1,188 @@
+﻿{% extends 'base.html' %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-slate-800">Transactions</h1>
+    <p class="text-sm font-medium text-slate-500 mt-1">View and manage all your payments.</p>
+</div>
+
+<!-- Top Cards Row -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <!-- Collected Amount Card -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+        <div>
+            <div class="flex items-center gap-1.5 mb-2">
+                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Collected Amount</span>
+                <i class="fa-regular fa-circle-question text-slate-300 text-xs cursor-help" title="Total amount successfully collected"></i>
+            </div>
+            <h2 class="text-4xl font-black text-slate-800 tracking-tight">₹{{ "%.2f"|format(collected_amount) }}</h2>
+            <p class="text-sm font-medium text-slate-500 mt-2">from {{ collected_count }} captured payments</p>
+        </div>
+        
+        <div class="mt-6 pt-4 border-t border-dashed border-slate-200">
+            <div class="flex items-start gap-2.5">
+                <i class="fa-solid fa-bolt text-primary mt-0.5"></i>
+                <p class="text-[13px] font-medium text-slate-600">100% of payments are settled instantly to your bank account with 0% fee.</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Split by Method Card -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 relative">
+        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-6">Split by payment method</h3>
+        <div class="flex items-center justify-between mt-4">
+            <div class="relative w-28 h-28">
+                <!-- Simple CSS Donut Chart -->
+                <svg viewBox="0 0 36 36" class="w-full h-full text-primary">
+                    <path class="text-indigo-100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="4"></path>
+                    <path class="text-primary" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="4"></path>
+                </svg>
+            </div>
+            
+            <div class="flex flex-col gap-3">
+                <div class="flex items-center gap-6">
+                    <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 rounded-full bg-primary"></div>
+                        <span class="text-sm font-bold text-slate-800">UPI</span>
+                    </div>
+                    <span class="text-sm font-bold text-slate-500">100%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bottom Stats Row -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <!-- Pending -->
+    <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
+        <div class="flex items-center gap-1.5 mb-3">
+            <i class="fa-regular fa-clock text-amber-500 text-sm"></i>
+            <span class="text-sm font-bold text-slate-800">Pending</span>
+            <i class="fa-regular fa-circle-question text-slate-300 text-xs ml-1"></i>
+        </div>
+        <h3 class="text-2xl font-black text-slate-800 mb-1">{{ pending_count }}</h3>
+        <p class="text-xs font-medium text-slate-500">Awaiting customer payment</p>
+    </div>
+    
+    <!-- Expired -->
+    <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
+        <div class="flex items-center gap-1.5 mb-3">
+            <i class="fa-solid fa-ban text-slate-400 text-sm"></i>
+            <span class="text-sm font-bold text-slate-800">Expired</span>
+            <i class="fa-regular fa-circle-question text-slate-300 text-xs ml-1"></i>
+        </div>
+        <h3 class="text-2xl font-black text-slate-800 mb-1">{{ expired_count }}</h3>
+        <p class="text-xs font-medium text-slate-500">Payment link timed out</p>
+    </div>
+    
+    <!-- Failed -->
+    <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
+        <div class="flex items-center gap-1.5 mb-3">
+            <i class="fa-regular fa-circle-xmark text-red-500 text-sm"></i>
+            <span class="text-sm font-bold text-slate-800">Failed</span>
+            <i class="fa-regular fa-circle-question text-slate-300 text-xs ml-1"></i>
+        </div>
+        <h3 class="text-2xl font-black text-slate-800 mb-1">{{ failed_count }}</h3>
+        <p class="text-xs font-medium text-slate-500">Transaction declined</p>
+    </div>
+</div>
+
+<!-- Payments List Section -->
+<div class="mb-4">
+    <h3 class="text-base font-bold text-slate-800 border-b border-slate-800 inline-block pb-1">Payments</h3>
+</div>
+
+<div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+    <!-- Tabs -->
+    <div class="border-b border-slate-100 px-6 pt-4 flex gap-6 overflow-x-auto hide-scrollbar">
+        <button class="pb-3 text-sm font-bold text-primary border-b-2 border-primary whitespace-nowrap">All</button>
+        <button class="pb-3 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors whitespace-nowrap">Created</button>
+        <button class="pb-3 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors whitespace-nowrap">Captured</button>
+        <button class="pb-3 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors whitespace-nowrap">Expired</button>
+        <button class="pb-3 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors whitespace-nowrap">Failed</button>
+    </div>
+    
+    <!-- Filters -->
+    <div class="p-4 border-b border-slate-50 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/50">
+        <div class="flex items-center gap-3">
+            <div class="relative">
+                <select class="appearance-none bg-white border border-slate-200 text-slate-700 text-xs font-bold py-2 pl-3 pr-8 rounded focus:outline-none focus:ring-1 focus:ring-primary shadow-sm cursor-pointer">
+                    <option>Last 30 Days</option>
+                    <option>Last 7 Days</option>
+                    <option>Today</option>
+                </select>
+                <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] pointer-events-none"></i>
+            </div>
+            <div class="relative">
+                <select class="appearance-none bg-white border border-slate-200 text-slate-700 text-xs font-bold py-2 pl-3 pr-8 rounded focus:outline-none focus:ring-1 focus:ring-primary shadow-sm cursor-pointer">
+                    <option>25 items</option>
+                    <option>50 items</option>
+                    <option>100 items</option>
+                </select>
+                <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] pointer-events-none"></i>
+            </div>
+        </div>
+        
+        <div class="relative w-full sm:w-64">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+            <input type="text" placeholder="Search in Order ID..." class="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded text-xs font-medium focus:outline-none focus:ring-1 focus:ring-primary shadow-sm placeholder:font-medium">
+        </div>
+    </div>
+    
+    <!-- Table content -->
+    <div class="overflow-x-auto min-h-[300px]">
+        {% if txns %}
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-white text-[11px] uppercase tracking-wider text-slate-400 font-bold border-b border-slate-100">
+                    <th class="py-3 px-6">Order ID</th>
+                    <th class="py-3 px-6">Amount</th>
+                    <th class="py-3 px-6">Method</th>
+                    <th class="py-3 px-6">Status</th>
+                    <th class="py-3 px-6">Date</th>
+                </tr>
+            </thead>
+            <tbody class="text-sm font-medium text-slate-700">
+                {% for txn in txns %}
+                <tr class="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                    <td class="py-4 px-6 font-bold text-slate-800">{{ txn[0] }}</td>
+                    <td class="py-4 px-6 font-bold">₹{{ "%.2f"|format(txn[1]) }}</td>
+                    <td class="py-4 px-6">
+                        <div class="flex items-center gap-2">
+                            <div class="w-5 h-5 rounded bg-indigo-50 flex items-center justify-center text-primary text-[10px]">
+                                <i class="fa-brands fa-google-pay"></i>
+                            </div>
+                            <span class="text-xs font-bold text-slate-600">UPI</span>
+                        </div>
+                    </td>
+                    <td class="py-4 px-6">
+                        {% if txn[2] == 'completed' %}
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">
+                            <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> Captured
+                        </span>
+                        {% elif txn[2] == 'pending' %}
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-600 border border-amber-100">
+                            <div class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div> Created
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-50 text-red-600 border border-red-100">
+                            <div class="w-1.5 h-1.5 rounded-full bg-red-500"></div> Failed
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="py-4 px-6 text-xs text-slate-500">{{ txn[3] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="flex flex-col items-center justify-center py-20">
+            <i class="fa-solid fa-inbox text-4xl text-slate-300 mb-4"></i>
+            <h4 class="text-base font-bold text-slate-800 mb-1">No transactions found</h4>
+            <p class="text-sm text-slate-500 text-center">No payments match your current search and filters.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

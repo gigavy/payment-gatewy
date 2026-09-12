@@ -1,0 +1,74 @@
+﻿{% extends 'base.html' %}
+
+{% block content %}
+<div class="mb-8">
+    <div class="flex justify-between items-end">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800">Webhook Logs</h1>
+            <p class="text-sm font-medium text-slate-500 mt-1">Monitor real-time webhook deliveries to your server.</p>
+        </div>
+        <div>
+            <button class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 shadow-sm transition-colors">
+                <i class="fa-solid fa-rotate"></i> Refresh Logs
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-8">
+    <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
+        <h3 class="text-lg font-bold text-slate-800">Recent Deliveries</h3>
+    </div>
+    
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-100">
+                    <th class="py-4 px-6">Time</th>
+                    <th class="py-4 px-6">Event</th>
+                    <th class="py-4 px-6">Order ID</th>
+                    <th class="py-4 px-6">Endpoint</th>
+                    <th class="py-4 px-6">Response</th>
+                    <th class="py-4 px-6"></th>
+                </tr>
+            </thead>
+            <tbody class="text-sm font-medium text-slate-700">
+                {% if logs %}
+                    {% for log in logs %}
+                    <tr class="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                        <td class="py-4 px-6 text-slate-500 text-xs">{{ log.sent_at }}</td>
+                        <td class="py-4 px-6 font-bold text-slate-800">payment.success</td>
+                        <td class="py-4 px-6 text-slate-500">{{ log.txn_id }}</td>
+                        <td class="py-4 px-6 text-slate-500 truncate max-w-[200px]">{{ log.url }}</td>
+                        <td class="py-4 px-6">
+                            {% if log.response_code == 200 %}
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">
+                                <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> 200 OK
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-50 text-red-600 border border-red-100">
+                                <div class="w-1.5 h-1.5 rounded-full bg-red-500"></div> {{ log.response_code }} Error
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="py-4 px-6 text-right">
+                            <button class="text-xs font-bold text-primary hover:text-indigo-800">View Payload</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="py-12 text-center">
+                            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-50 mb-4">
+                                <i class="fa-solid fa-satellite-dish text-2xl text-slate-400"></i>
+                            </div>
+                            <h4 class="text-base font-bold text-slate-800 mb-1">No webhooks sent yet</h4>
+                            <p class="text-sm text-slate-500 max-w-sm mx-auto">When your customers complete a payment, webhook logs will appear here.</p>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

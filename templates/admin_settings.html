@@ -1,0 +1,108 @@
+﻿{% extends 'admin_base.html' %}
+
+{% block content %}
+<div class="mb-8 flex items-center gap-3">
+    <div class="w-10 h-10 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center text-lg shadow-sm border border-slate-200">
+        <i class="fa-solid fa-sliders"></i>
+    </div>
+    <div>
+        <h1 class="text-2xl font-black text-slate-800">Gateway Settings</h1>
+        <p class="text-xs text-slate-500 mt-1">Configure global platform behavior.</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <h3 class="text-base font-bold text-slate-800 mb-6"><i class="fa-solid fa-power-off text-primary mr-2"></i> Core Settings</h3>
+        
+        <form action="/admin/settings" method="POST">
+            <!-- Maintenance Mode -->
+            <div class="mb-8 border border-slate-200 rounded-xl p-4 bg-slate-50">
+                <div class="flex items-center justify-between mb-2">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-800">Maintenance Mode</label>
+                        <p class="text-[10px] text-slate-500 mt-0.5">Turns off the entire platform for merchants and customers.</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" value="true" name="maintenance_mode" class="sr-only peer" {% if maintenance_mode == 'true' %}checked{% endif %}>
+                      <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+                    </label>
+                </div>
+                {% if maintenance_mode == 'true' %}
+                <div class="mt-3 text-[10px] font-bold text-red-600 flex items-center gap-1"><i class="fa-solid fa-triangle-exclamation"></i> CURRENTLY ACTIVE - PLATFORM IS OFFLINE</div>
+                {% endif %}
+            </div>
+
+            <!-- Change Admin Password -->
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-slate-700 mb-2">Change Super Admin Password</label>
+                <input type="password" name="admin_password" placeholder="Leave blank to keep current" class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary shadow-sm">
+            </div>
+
+            <hr class="my-6 border-slate-200">
+            <h3 class="text-sm font-bold text-slate-800 mb-4"><i class="fa-solid fa-envelope text-primary mr-2"></i> Broadcast SMTP Settings</h3>
+            
+            <div class="mb-4">
+                <label class="block text-xs font-bold text-slate-700 mb-1">Gmail Address</label>
+                <input type="email" name="admin_smtp_email" value="{{ smtp_email }}" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm" placeholder="admin@gmail.com">
+            </div>
+            
+            <div class="mb-6">
+                <label class="block text-xs font-bold text-slate-700 mb-1">Gmail App Password</label>
+                <input type="password" name="admin_smtp_password" value="{{ smtp_pass }}" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm" placeholder="16-digit App Password">
+            </div>
+
+            <hr class="my-6 border-slate-200">
+            <h3 class="text-sm font-bold text-slate-800 mb-4"><i class="fa-brands fa-google text-primary mr-2"></i> Google OAuth Settings</h3>
+            
+            <div class="mb-4">
+                <label class="block text-xs font-bold text-slate-700 mb-1">Google Client ID</label>
+                <input type="text" name="google_client_id" value="{{ g_client_id }}" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm">
+            </div>
+            
+            <div class="mb-6">
+                <label class="block text-xs font-bold text-slate-700 mb-1">Google Client Secret</label>
+                <input type="password" name="google_client_secret" value="{{ g_client_secret }}" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm">
+                <p class="text-[10px] text-slate-400 mt-1">Get this from Google Cloud Console. Set Redirect URI to <code class="bg-slate-100 text-slate-800 px-1 rounded">https://your-domain.onrender.com/login/google/callback</code></p>
+            </div>
+            <hr class="my-6 border-slate-200">
+            <h3 class="text-sm font-bold text-slate-800 mb-4"><i class="fa-brands fa-youtube text-red-600 mr-2"></i> Landing Page Settings</h3>
+            
+            <div class="mb-4">
+                <label class="block text-xs font-bold text-slate-700 mb-1">YouTube Video URL (Embed Link)</label>
+                <input type="text" name="youtube_link" value="{{ yt_link }}" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm" placeholder="e.g., https://www.youtube.com/embed/dQw4w9WgXcQ">
+                <p class="text-[10px] text-slate-400 mt-1">This video will be displayed on the main landing page.</p>
+            </div>
+            
+            <div class="mb-6">
+                <label class="block text-xs font-bold text-slate-700 mb-1">Support WhatsApp Number (With Country Code)</label>
+                <input type="text" name="support_whatsapp" value="{{ wa_number }}" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm" placeholder="e.g., 919876543210">
+                <p class="text-[10px] text-slate-400 mt-1">This will be used for the WhatsApp Support button on the landing page.</p>
+            </div>
+            
+            <button type="submit" class="w-full bg-primary hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-all shadow-md shadow-indigo-500/30 text-sm flex items-center justify-center gap-2">
+                <i class="fa-solid fa-save"></i> Save Settings
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    if(urlParams.has("success")) {
+        Swal.fire({
+            icon: "success",
+            title: "Success",
+            text: urlParams.get("success"),
+            confirmButtonColor: "#4f46e5",
+            timer: 2000,
+            showConfirmButton: false
+        });
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+</script>
+{% endblock %}
+
+
+
+

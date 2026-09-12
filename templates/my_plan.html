@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="mb-8 flex justify-between items-start">
+    <div>
+        <h1 class="text-2xl font-black text-slate-800 flex items-center gap-3">
+            <i class="fa-solid fa-file-invoice text-primary"></i> My Subscription
+        </h1>
+        <p class="text-xs text-slate-500 mt-1">Manage your current plan and usage details.</p>
+    </div>
+    <a href="/subscription" class="bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-bold px-4 py-2 rounded-lg text-sm border border-emerald-200 transition shadow-sm flex items-center gap-2">
+        <i class="fa-solid fa-arrow-up"></i> Upgrade Plan
+    </a>
+</div>
+
+<div class="bg-white rounded-2xl shadow-sm border border-slate-200 mb-8 overflow-hidden">
+    <div class="p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-8">
+        <div class="flex items-center gap-6">
+            <div class="w-16 h-16 bg-orange-50 rounded-2xl flex items-center justify-center border border-orange-100 shadow-sm">
+                <i class="fa-solid fa-crown text-3xl text-orange-400"></i>
+            </div>
+            <div>
+                <div class="flex items-center gap-3 mb-1">
+                    <h2 class="text-xl font-bold text-slate-800">{{ plan_name }} Plan</h2>
+                    <span class="bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-200 uppercase tracking-wide">Active</span>
+                </div>
+                <div class="text-2xl font-black text-slate-800 flex items-baseline gap-1">
+                    {% if plan_name == 'Basic' %}₹1
+                    {% elif plan_name == 'Nano' %}₹45
+                    {% elif plan_name == 'Micro' %}₹95
+                    {% elif plan_name == 'Starter' %}₹195
+                    {% else %}₹0{% endif %}
+                    <span class="text-xs text-slate-500 font-medium">/month</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex-grow w-full max-w-md bg-slate-50 rounded-xl p-5 border border-slate-100">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Started On</div>
+                    <div class="text-sm font-bold text-slate-800">{{ start_date }}</div>
+                </div>
+                <div>
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Expires On</div>
+                    <div class="text-sm font-bold text-slate-800">{{ expire_date }}</div>
+                </div>
+            </div>
+            
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <div class="text-xs font-bold text-slate-700">Days Remaining</div>
+                    <div class="text-xs font-bold text-slate-800">{{ days_remaining }} days</div>
+                </div>
+                <div class="w-full bg-slate-200 rounded-full h-2">
+                    <div class="bg-emerald-500 h-2 rounded-full" style="width: {{ (days_remaining / 30) * 100 if days_remaining <= 30 else 100 }}%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h3 class="text-lg font-bold text-slate-800 mb-4">Plan Usage</h3>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+    <!-- Transactions -->
+    <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-500 flex items-center justify-center">
+                <i class="fa-solid fa-money-bill-transfer"></i>
+            </div>
+            <div class="text-sm font-bold text-slate-700">Transactions</div>
+        </div>
+        <div class="text-xl font-black text-slate-800 mb-3">{{ txns_count }} <span class="text-sm font-medium text-slate-400">/ {% if plan_name == 'Basic' %}Unlimited{% elif plan_name == 'Nano' %}800{% elif plan_name == 'Micro' %}1,000{% elif plan_name == 'Starter' %}10,000{% else %}100{% endif %}</span></div>
+        <div class="w-full bg-slate-100 rounded-full h-1.5">
+            <div class="bg-emerald-500 h-1.5 rounded-full" style="width: 25%"></div>
+        </div>
+    </div>
+    
+    <!-- Cashiers -->
+    <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center">
+                <i class="fa-solid fa-user-tie"></i>
+            </div>
+            <div class="text-sm font-bold text-slate-700">Cashiers</div>
+        </div>
+        <div class="text-xl font-black text-slate-800 mb-3">0 <span class="text-sm font-medium text-slate-400">/ 5</span></div>
+        <div class="w-full bg-slate-100 rounded-full h-1.5">
+            <div class="bg-blue-500 h-1.5 rounded-full" style="width: 0%"></div>
+        </div>
+    </div>
+    
+    <!-- Staff Members -->
+    <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-8 h-8 rounded-lg bg-purple-50 text-purple-500 flex items-center justify-center">
+                <i class="fa-solid fa-users"></i>
+            </div>
+            <div class="text-sm font-bold text-slate-700">Staff Members</div>
+        </div>
+        <div class="text-xl font-black text-slate-800 mb-3">0 <span class="text-sm font-medium text-slate-400">/ 5</span></div>
+        <div class="w-full bg-slate-100 rounded-full h-1.5">
+            <div class="bg-purple-500 h-1.5 rounded-full" style="width: 0%"></div>
+        </div>
+    </div>
+    
+    <!-- Transfers/Day -->
+    <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-8 h-8 rounded-lg bg-orange-50 text-orange-500 flex items-center justify-center">
+                <i class="fa-solid fa-exchange-alt"></i>
+            </div>
+            <div class="text-sm font-bold text-slate-700">Transfers/Day</div>
+        </div>
+        <div class="text-xl font-black text-slate-800 mb-3">0 <span class="text-sm font-medium text-slate-400">/ 5</span></div>
+        <div class="w-full bg-slate-100 rounded-full h-1.5">
+            <div class="bg-orange-500 h-1.5 rounded-full" style="width: 0%"></div>
+        </div>
+    </div>
+    
+    <!-- Static Paylinks -->
+    <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-500 flex items-center justify-center">
+                <i class="fa-solid fa-link"></i>
+            </div>
+            <div class="text-sm font-bold text-slate-700">Static Paylinks</div>
+        </div>
+        <div class="text-xl font-black text-slate-800 mb-3">0 <span class="text-sm font-medium text-slate-400">/ 100</span></div>
+        <div class="w-full bg-slate-100 rounded-full h-1.5">
+            <div class="bg-indigo-500 h-1.5 rounded-full" style="width: 0%"></div>
+        </div>
+    </div>
+    
+    <!-- Webhooks -->
+    <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-8 h-8 rounded-lg bg-pink-50 text-pink-500 flex items-center justify-center">
+                <i class="fa-solid fa-satellite-dish"></i>
+            </div>
+            <div class="text-sm font-bold text-slate-700">Webhooks</div>
+        </div>
+        <div class="text-xl font-black text-slate-800 mb-3">{{ webhooks_count }} <span class="text-sm font-medium text-slate-400">/ 2</span></div>
+        <div class="w-full bg-slate-100 rounded-full h-1.5">
+            <div class="bg-pink-500 h-1.5 rounded-full" style="width: {{ (webhooks_count / 2) * 100 if webhooks_count <= 2 else 100 }}%"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,126 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NovaPay Super Admin</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        sidebar: '#0f172a', /* Dark slate */
+                        primary: '#4f46e5', /* Indigo */
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .sidebar-link { transition: all 0.2s ease; }
+        .sidebar-link:hover { background-color: rgba(255,255,255,0.1); color: white; }
+        .sidebar-link.active { background-color: #4f46e5; color: white; border-radius: 0.5rem; }
+        .sidebar-scroll::-webkit-scrollbar { display: none; }
+        .sidebar-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-sidebar text-slate-400 flex flex-col shadow-xl z-20 hidden md:flex">
+        <!-- Logo -->
+        <div class="h-16 flex items-center px-6 bg-slate-900 border-b border-slate-800">
+            <span class="text-xl font-black text-white tracking-tight flex items-center gap-2">
+                <span class="text-primary text-2xl">N</span> NovaPay <span class="bg-red-500 text-[10px] text-white px-1.5 py-0.5 rounded ml-1 tracking-wider uppercase">Admin</span>
+            </span>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="flex-1 overflow-y-auto py-6 px-4 sidebar-scroll">
+            
+            <div class="mb-4">
+                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Overview</p>
+                <a href="/admin" class="sidebar-link {% if request.path == '/admin' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-300">
+                    <i class="fa-solid fa-chart-pie w-5 text-center"></i> Dashboard
+                </a>
+            </div>
+
+            <div class="mb-4">
+                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-4 mb-2">Management</p>
+                <a href="/admin/users" class="sidebar-link {% if request.path == '/admin/users' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-300">
+                    <i class="fa-solid fa-users w-5 text-center"></i> Manage Users
+                </a>
+                <a href="/admin/transactions" class="sidebar-link {% if request.path == '/admin/transactions' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-300">
+                    <i class="fa-solid fa-bolt w-5 text-center"></i> Live Transactions
+                </a>
+                <a href="/admin/payouts" class="sidebar-link {% if request.path == '/admin/payouts' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-300">
+                    <i class="fa-solid fa-money-bill-transfer w-5 text-center"></i> Payout Requests
+                </a>
+                <a href="/admin/broadcast" class="sidebar-link {% if request.path == '/admin/broadcast' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-300">
+                    <i class="fa-solid fa-paper-plane w-5 text-center"></i> Broadcast Email
+                </a>
+                <a href="/admin/logs" class="sidebar-link {% if request.path == '/admin/logs' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-300">
+                    <i class="fa-solid fa-bug w-5 text-center"></i> System Logs
+                </a>
+                <a href="/admin/settings" class="sidebar-link {% if request.path == '/admin/settings' %}active{% endif %} flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-300">
+                    <i class="fa-solid fa-sliders w-5 text-center"></i> Gateway Settings
+                </a>
+            </div>
+
+            <div class="mb-4 mt-auto">
+                <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-4 mb-2">Account</p>
+                <a href="/admin/logout" class="sidebar-link flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-red-400 hover:bg-red-500/10">
+                    <i class="fa-solid fa-power-off w-5 text-center"></i> Logout
+                </a>
+            </div>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50">
+        <!-- Topbar -->
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-10 shadow-sm">
+            <div class="flex items-center gap-4">
+                <button class="md:hidden text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm">
+                        A
+                    </div>
+                    <div class="hidden sm:block text-sm">
+                        <p class="font-bold text-slate-700">Super Admin</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <div class="flex-1 overflow-y-auto p-6 md:p-8">
+            <div class="max-w-7xl mx-auto">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </main>
+</body>
+</html>
+

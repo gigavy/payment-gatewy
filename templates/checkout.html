@@ -1,0 +1,329 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Checkout | {{ display_name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { primary: '#4f46e5' },
+                    fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .success-overlay {
+            position: fixed; top: 0; left: 0; w-full h-full; z-index: 50;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        .success-overlay.active { opacity: 1; pointer-events: auto; }
+        
+        /* Nova Light (default) */
+        .theme-default { background-color: #f8fafc; }
+        .theme-default .card-bg { background-color: white; border-color: #f1f5f9; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+        .theme-default .text-dark { color: #1e293b; }
+        .theme-default .text-muted { color: #64748b; }
+        .theme-default .qr-bg { background-color: white; border: 1px solid #e2e8f0; }
+        .theme-default .success-overlay { background: rgba(255, 255, 255, 0.98); }
+        
+        /* Nova Dark (premium) */
+        .theme-premium { background-color: #0f172a; color: white; }
+        .theme-premium .card-bg { background-color: #1e293b; border-color: #334155; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+        .theme-premium .text-dark { color: white; }
+        .theme-premium .text-muted { color: #94a3b8; }
+        .theme-premium .qr-bg { background-color: #f8fafc; padding: 0.5rem; }
+        .theme-premium .success-overlay { background: rgba(15, 23, 42, 0.98); }
+        
+        /* Clean White (GuruPay style) */
+        .theme-clean { background-color: #f4f5f7; }
+        .theme-clean .card-bg { background-color: white; border: none; box-shadow: 0 10px 40px -10px rgba(0,0,0,0.08); border-radius: 24px; }
+        .theme-clean .text-dark { color: #111827; }
+        .theme-clean .text-muted { color: #6b7280; }
+        .theme-clean .qr-bg { background-color: white; border: none; }
+        .theme-clean .success-overlay { background: rgba(255, 255, 255, 0.98); }
+        
+        /* Gradient */
+        .theme-gradient { background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); }
+        .theme-gradient .card-bg { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.5); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
+        .theme-gradient .text-dark { color: #1e293b; }
+        .theme-gradient .text-muted { color: #64748b; }
+        .theme-gradient .qr-bg { background-color: white; border: 1px solid #e2e8f0; }
+        .theme-gradient .success-overlay { background: rgba(255, 255, 255, 0.98); }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4 sm:p-6 theme-{{ theme }}">
+    
+    <input type="hidden" id="txn_id" value="{{ txn_id }}">
+    <input type="hidden" id="api_key" value="{{ api_key }}">
+    <input type="hidden" id="callback_url" value="{{ callback_url }}">
+
+    <div class="w-full max-w-sm card-bg rounded-3xl overflow-hidden relative mx-auto pb-4">
+        
+        <!-- Header variations based on theme -->
+        {% if theme == 'default' %}
+            <div class="bg-primary h-28 absolute top-0 w-full" id="previewHeader"></div>
+        {% elif theme == 'premium' %}
+            <div class="bg-slate-800 h-28 absolute top-0 w-full" id="previewHeader"></div>
+        {% endif %}
+        
+        <div class="relative pt-8 px-6 pb-6 text-center z-10">
+            
+            <!-- Profile Photo / Logo Area -->
+            {% if theme == 'clean' or theme == 'gradient' %}
+                <!-- Circular Avatar (No overlap header) -->
+                {% if profile_pic %}
+                    <img src="{{ profile_pic }}" class="w-16 h-16 rounded-full mx-auto mb-4 object-cover shadow-sm border border-slate-100">
+                {% else %}
+                    <div class="w-16 h-16 bg-slate-100 rounded-full mx-auto mb-4 flex items-center justify-center border border-slate-200 text-slate-400 font-bold text-2xl">
+                        {{ display_name[:1].upper() if display_name else 'M' }}
+                    </div>
+                {% endif %}
+            {% else %}
+                <!-- Overlapping Square Logo -->
+                <div class="w-24 h-24 bg-white rounded-2xl shadow-md mx-auto mb-5 flex items-center justify-center border-4 {% if theme == 'premium' %}border-slate-800{% else %}border-white{% endif %} text-primary font-black text-3xl overflow-hidden">
+                    {% if profile_pic %}
+                        <img src="{{ profile_pic }}" class="w-full h-full object-cover">
+                    {% else %}
+                        {{ display_name[:1].upper() if display_name else 'M' }}
+                    {% endif %}
+                </div>
+            {% endif %}
+            
+            <h2 class="text-2xl font-black text-dark mb-1 tracking-tight">{{ display_name if display_name else 'Merchant' }}</h2>
+            <p class="text-sm font-medium text-muted mb-6">Paying for Order #{{ txn_id[-6:] }}</p>
+            
+            <h1 class="text-[2.75rem] font-black text-dark mb-6 leading-none">₹{{ amount }}</h1>
+            
+            <!-- Timer above QR for clean theme, else bottom -->
+            {% if theme == 'clean' %}
+            <div class="flex items-center justify-center gap-2 mb-4">
+                <i class="fa-solid fa-spinner fa-spin text-slate-300 text-xs"></i>
+                <span id="countdown_top" class="text-xs font-bold text-slate-500">05:00 mins left</span>
+            </div>
+            {% endif %}
+            
+            <!-- QR Section (Desktop) -->
+            <div id="desktopQrSection">
+                <div class="w-56 h-56 mx-auto rounded-2xl mb-4 flex items-center justify-center qr-bg overflow-hidden p-2">
+                    <img src="{{ qr_url }}" alt="QR Code" class="w-full h-full object-contain rounded-xl">
+                </div>
+                
+                <p class="text-xs font-bold text-muted mb-4 font-mono">{{ user_info.upi_id if user_info else '' }}</p>
+                
+                <div class="flex justify-center items-center gap-4 mb-2">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/e/e1/UPI-Logo-vector.svg" class="h-4 opacity-70">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/2/24/Paytm_Logo_%28standalone%29.svg" class="h-4 opacity-70">
+                    <img src="https://i.ibb.co/bRMDCCVC/279e01e3d0f86ec724cc04e47746cd50-1.jpg" class="h-5 rounded-md opacity-80" alt="FamPay">
+                </div>
+                
+                <div class="mt-4 flex flex-col items-center justify-center py-3 px-4 bg-indigo-50/50 rounded-xl border border-indigo-100/50">
+                    <div class="flex items-center gap-3 text-primary font-bold text-sm">
+                        <i class="fa-solid fa-circle-notch fa-spin text-lg"></i>
+                        <span>Auto-verifying payment...</span>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1 font-medium">Please do not close this window</p>
+                </div>
+                
+            </div>
+            
+            <!-- Mobile Intent Section -->
+            <div id="mobileIntentContainer" class="hidden flex-col gap-3 mb-6">
+                <a href="{{ payment_url }}" class="w-full bg-primary hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-md transition-transform active:scale-95 flex items-center justify-center gap-3">
+                    <i class="fa-solid fa-bolt"></i> Pay ₹{{ amount }} Now
+                </a>
+                <button onclick="showUtrModal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl transition-colors text-sm">
+                    I have already paid
+                </button>
+            </div>
+            
+            {% if theme != 'clean' %}
+            <div class="flex items-center justify-between px-2 mt-4 pt-4 border-t border-slate-200/50 {% if theme=='premium' %}border-slate-700{% endif %}">
+                <div class="flex items-center gap-2">
+                    <i class="fa-regular fa-clock text-amber-500"></i>
+                    <span id="countdown" class="text-sm font-bold text-amber-600">05:00</span>
+                </div>
+                <button id="cancelBtn" class="text-xs font-bold text-red-500 hover:text-red-600 transition-colors">Cancel Payment</button>
+            </div>
+            {% else %}
+                <button id="cancelBtn" class="text-xs font-bold text-slate-400 hover:text-red-500 transition-colors mt-2">Cancel Payment</button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Manual UTR Modal -->
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 transition-opacity opacity-0" id="utrModal">
+        <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl transform scale-95 transition-transform" id="utrModalContent">
+            <div class="p-6">
+                <div class="w-12 h-12 bg-indigo-50 text-primary rounded-full flex items-center justify-center text-xl mb-4">
+                    <i class="fa-solid fa-receipt"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-800 mb-2">Submit Reference No.</h3>
+                <p class="text-sm text-slate-500 mb-6">If you have paid but the screen hasn't updated, please enter the 12-digit UTR/Reference Number below.</p>
+                <input type="text" id="utrInput" placeholder="e.g. 321456789012" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-bold focus:ring-2 focus:ring-primary outline-none mb-6 text-center tracking-widest">
+                <div class="flex gap-3">
+                    <button onclick="closeUtrModal()" class="flex-1 bg-slate-100 text-slate-700 font-bold py-3 rounded-xl hover:bg-slate-200">Close</button>
+                    <button onclick="submitUtrManual()" id="submitUtrBtn" class="flex-1 bg-primary text-white font-bold py-3 rounded-xl hover:bg-indigo-700">Verify</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Screen -->
+    <div class="success-overlay" id="successScreen">
+        <div class="w-24 h-24 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center text-5xl mb-6 shadow-lg shadow-emerald-500/20">
+            <i class="fa-solid fa-check"></i>
+        </div>
+        <h2 class="text-3xl font-black text-dark mb-2">Payment <span class="text-emerald-500">Successful!</span></h2>
+        <p class="text-muted font-medium mb-8">₹{{ amount }} has been received.</p>
+        
+        <div class="w-full max-w-xs bg-slate-50 border border-slate-200 rounded-2xl p-5 text-left mb-8 {% if theme == 'premium' %}bg-slate-800 border-slate-700{% endif %}">
+            <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Transaction ID</div>
+            <div class="font-mono text-sm font-bold text-dark mb-4">{{ txn_id }}</div>
+            
+            <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">UTR / Ref No.</div>
+            <div class="font-mono text-sm font-bold text-emerald-500" id="success_utr">Fetching...</div>
+        </div>
+        
+        <div class="flex items-center gap-2 text-xs font-bold text-slate-400">
+            <i class="fa-solid fa-spinner fa-spin"></i> Redirecting you back...
+        </div>
+    </div>
+
+    <script>
+        let timeLeft = 300;
+        const timerEl = document.getElementById('countdown');
+        const timerElTop = document.getElementById('countdown_top');
+        
+        const timerInterval = setInterval(() => {
+            timeLeft--;
+            const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+            const s = (timeLeft % 60).toString().padStart(2, '0');
+            const timeText = `${m}:${s}`;
+            if(timerEl) timerEl.textContent = timeText;
+            if(timerElTop) timerElTop.textContent = timeText + " mins left";
+
+            if(timeLeft <= 0) {
+                clearInterval(timerInterval);
+                if(timerEl) { timerEl.textContent = "EXPIRED"; timerEl.classList.replace('text-amber-600', 'text-red-500'); }
+                if(timerElTop) { timerElTop.textContent = "EXPIRED"; timerElTop.classList.replace('text-slate-500', 'text-red-500'); }
+                fetch('/api/cancel_txn', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({txn_id: document.getElementById('txn_id').value})
+                });
+            }
+        }, 1000);
+
+        const txnId = document.getElementById('txn_id').value;
+        const apiKey = document.getElementById('api_key').value;
+
+        function showUtrModal() {
+            const modal = document.getElementById('utrModal');
+            const content = document.getElementById('utrModalContent');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeUtrModal() {
+            const modal = document.getElementById('utrModal');
+            const content = document.getElementById('utrModalContent');
+            content.classList.add('scale-95');
+            modal.classList.add('opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        
+        async function submitUtrManual() {
+            const utr = document.getElementById('utrInput').value.trim();
+            if(!utr) return;
+            
+            const btn = document.getElementById('submitUtrBtn');
+            const orig = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            btn.disabled = true;
+            
+            try {
+                await fetch('/api/submit_utr', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({txn_id: txnId, utr: utr})
+                });
+                closeUtrModal();
+            } catch(e) {}
+            btn.innerHTML = orig;
+            btn.disabled = false;
+        }
+        
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if(isMobile) {
+            document.getElementById('desktopQrSection').style.display = 'none';
+            document.getElementById('mobileIntentContainer').classList.remove('hidden');
+            document.getElementById('mobileIntentContainer').classList.add('flex');
+        }
+        
+        async function cancelTxn() {
+            const btn = document.getElementById('cancelBtn');
+            if(btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            try {
+                await fetch('/api/cancel_txn', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({txn_id: txnId})
+                });
+            } catch(e) {}
+            const cb = document.getElementById('callback_url').value;
+            if (cb && cb !== 'None' && cb.trim() !== '') {
+                window.location.href = cb;
+            } else {
+                window.location.href = '/';
+            }
+        }
+
+        const cBtn = document.getElementById('cancelBtn');
+        if(cBtn) cBtn.addEventListener('click', cancelTxn);
+
+        const checkInterval = setInterval(async () => {
+            if(timeLeft <= 0) {
+                clearInterval(checkInterval);
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/verify?txn_id=${txnId}`);
+                const data = await res.json();
+                
+                if (data.status === 'completed') {
+                    clearInterval(checkInterval);
+                    clearInterval(timerInterval);
+                    
+                    document.getElementById('success_utr').textContent = data.data.utr || 'Auto-Verified';
+                    document.getElementById('successScreen').classList.add('active');
+                    
+                    const callbackUrl = document.getElementById('callback_url').value;
+                    if (callbackUrl && callbackUrl !== 'None' && callbackUrl !== '') {
+                        setTimeout(() => {
+                            window.location.href = callbackUrl;
+                        }, 2500);
+                    }
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }, 2000);
+    </script>
+</body>
+</html>
+

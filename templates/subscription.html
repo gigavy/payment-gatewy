@@ -1,0 +1,202 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    .plan-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        padding: 2rem;
+        position: relative;
+        transition: all 0.2s;
+    }
+    .plan-card:hover {
+        border-color: #cbd5e1;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+    }
+    .plan-card.popular {
+        border-color: #f59e0b;
+        box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.1);
+    }
+    .popular-badge {
+        position: absolute;
+        top: -12px;
+        right: 2rem;
+        background-color: #f59e0b;
+        color: white;
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 0.25rem 0.75rem;
+        border-radius: 0.5rem;
+    }
+    .icon-box {
+        width: 3rem;
+        height: 3rem;
+        border-radius: 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+        font-size: 1.25rem;
+    }
+    .check-icon {
+        color: #94a3b8;
+        font-size: 0.875rem;
+        margin-right: 0.75rem;
+        margin-top: 0.15rem;
+    }
+    .feature-item {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+        font-size: 0.8rem;
+        color: #64748b;
+    }
+    .btn-sub {
+        width: 100%;
+        padding: 0.75rem;
+        text-align: center;
+        font-weight: 600;
+        font-size: 0.875rem;
+        border-radius: 0.5rem;
+        border: 1px solid #e2e8f0;
+        color: #0f172a;
+        transition: all 0.2s;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .btn-sub:hover {
+        background: #f8fafc;
+    }
+    .btn-sub.dark {
+        background: #0f172a;
+        color: white;
+        border-color: #0f172a;
+    }
+    .btn-sub.dark:hover {
+        background: #1e293b;
+    }
+</style>
+
+<div class="mb-8 flex justify-between items-start">
+    <div>
+        <h1 class="text-2xl font-black text-slate-800 flex items-center gap-3">
+            <i class="fa-solid fa-crown text-orange-400"></i> Subscription Plans
+        </h1>
+        <p class="text-xs text-slate-500 mt-1">Choose a plan that fits your payment gateway needs.</p>
+    </div>
+    <div class="flex items-center bg-white rounded-full p-1 border border-slate-200">
+        <button class="px-4 py-1.5 text-xs font-bold bg-slate-800 text-white rounded-full">Monthly</button>
+        <button class="px-4 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 rounded-full">Yearly</button>
+        <span class="ml-2 bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200 mr-2">Save up to 20% <i class="fa-solid fa-bolt"></i></span>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <!-- Basic -->
+    <div class="plan-card">
+        <div class="icon-box bg-emerald-50 text-emerald-500">
+            <i class="fa-solid fa-leaf"></i>
+        </div>
+        <h3 class="text-lg font-bold text-slate-800 mb-1">Basic</h3>
+        <p class="text-xs text-slate-500 mb-6 h-8">Perfect for small businesses and startups.</p>
+        <div class="text-3xl font-black text-slate-800 mb-8">₹1<span class="text-sm text-slate-400 font-medium">/month</span></div>
+        
+        <div class="flex-grow mb-8">
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon"></i> <span>Unlimited successful transactions/week</span></div>
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon"></i> <span>3 Cashiers</span></div>
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon"></i> <span>1 Staff Member</span></div>
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon"></i> <span>1 Transfer/day</span></div>
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon"></i> <span>100 Static Paylinks</span></div>
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon"></i> <span>1 Webhook</span></div>
+        </div>
+        <button onclick="showUpgradeAlert('Basic')" class="btn-sub">Subscribe Now <i class="fa-solid fa-arrow-right text-xs"></i></button>
+    </div>
+
+    <!-- Nano -->
+    <div class="plan-card">
+        <div class="icon-box bg-blue-50 text-blue-500">
+            <i class="fa-solid fa-rocket"></i>
+        </div>
+        <h3 class="text-lg font-bold text-slate-800 mb-1">Nano</h3>
+        <p class="text-xs text-slate-500 mb-6 h-8">More features for growing businesses.</p>
+        <div class="text-3xl font-black text-slate-800 mb-8">₹45<span class="text-sm text-slate-400 font-medium">/month</span></div>
+        
+        <div class="flex-grow mb-8">
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon"></i> <span>800 successful transactions/week</span></div>
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon"></i> <span>5 Cashiers</span></div>
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon"></i> <span>5 Staff Members</span></div>
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon"></i> <span>3 Transfers/day</span></div>
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon"></i> <span>100 Static Paylinks</span></div>
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon"></i> <span>1 Webhook</span></div>
+        </div>
+        <button onclick="showUpgradeAlert('Nano')" class="btn-sub">Subscribe Now <i class="fa-solid fa-arrow-right text-xs"></i></button>
+    </div>
+
+    <!-- Micro -->
+    <div class="plan-card popular">
+        <div class="popular-badge">Most Popular</div>
+        <div class="icon-box bg-orange-50 text-orange-500">
+            <i class="fa-solid fa-medal"></i>
+        </div>
+        <h3 class="text-lg font-bold text-slate-800 mb-1">Micro</h3>
+        <p class="text-xs text-slate-500 mb-6 h-8">Best for medium businesses and professional use.</p>
+        <div class="text-3xl font-black text-slate-800 mb-8">₹95<span class="text-sm text-slate-400 font-medium">/month</span></div>
+        
+        <div class="flex-grow mb-8">
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon" style="color: #0f172a;"></i> <span class="text-slate-800 font-medium">1,000 successful transactions/week</span></div>
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon" style="color: #0f172a;"></i> <span class="text-slate-800 font-medium">5 Cashiers</span></div>
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon" style="color: #0f172a;"></i> <span class="text-slate-800 font-medium">5 Staff Members</span></div>
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon" style="color: #0f172a;"></i> <span class="text-slate-800 font-medium">5 Transfers/day</span></div>
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon" style="color: #0f172a;"></i> <span class="text-slate-800 font-medium">100 Static Paylinks</span></div>
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon" style="color: #0f172a;"></i> <span class="text-slate-800 font-medium">2 Webhooks</span></div>
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon" style="color: #0f172a;"></i> <span class="text-slate-800 font-medium">QR Code Removed</span></div>
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon" style="color: #0f172a;"></i> <span class="text-slate-800 font-medium">Custom API Keys</span></div>
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon" style="color: #0f172a;"></i> <span class="text-slate-800 font-medium">Friday Unlimited Transactions</span></div>
+        </div>
+        <button onclick="showUpgradeAlert('Micro')" class="btn-sub dark">Subscribe Now <i class="fa-solid fa-arrow-right text-xs"></i></button>
+    </div>
+
+    <!-- Starter -->
+    <div class="plan-card">
+        <div class="icon-box bg-purple-50 text-purple-500">
+            <i class="fa-solid fa-star"></i>
+        </div>
+        <h3 class="text-lg font-bold text-slate-800 mb-1">Starter</h3>
+        <p class="text-xs text-slate-500 mb-6 h-8">Advanced features for larger businesses.</p>
+        <div class="text-3xl font-black text-slate-800 mb-8">₹195<span class="text-sm text-slate-400 font-medium">/month</span></div>
+        
+        <div class="flex-grow mb-8">
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon"></i> <span>300 successful transactions/week</span></div>
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon"></i> <span>3 Cashiers</span></div>
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon"></i> <span>1 Staff Member</span></div>
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon"></i> <span>1 Transfer/day</span></div>
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon"></i> <span>120 Static Paylinks</span></div>
+            <div class="feature-item"><i class="fa-regular fa-circle-check check-icon"></i> <span>2 Webhooks</span></div>
+        </div>
+        <button onclick="showUpgradeAlert('Starter')" class="btn-sub">Subscribe Now <i class="fa-solid fa-arrow-right text-xs"></i></button>
+    </div>
+</div>
+
+<script>
+    function showUpgradeAlert(planName) {
+        Swal.fire({
+            title: 'Upgrade to ' + planName,
+            text: 'You will be redirected to WhatsApp to contact the Admin for payment.',
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonText: '<i class="fa-brands fa-whatsapp"></i> Chat Now',
+            confirmButtonColor: '#25D366',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const waNumber = "{{ wa_number }}".replace('+', '').trim() || '919771348544';
+                const message = encodeURIComponent('Hello Admin, I want to upgrade my NovaPay subscription to the ' + planName + ' plan.');
+                window.open('https://wa.me/' + waNumber + '?text=' + message, '_blank');
+            }
+        });
+    }
+</script>
+{% endblock %}

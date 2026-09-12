@@ -1,0 +1,234 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - NovaPay Gateway</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: { 
+                    colors: { 
+                        primary: '#2563eb', /* Royal Blue */
+                        darkblue: '#1e3a8a',
+                        textMain: '#0f172a'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        
+        .bg-grid {
+            background-size: 40px 40px;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+        }
+        
+        /* Cloudflare dummy box */
+        .cf-box {
+            border: 1px solid #e2e8f0;
+            background: #fafafa;
+            border-radius: 4px;
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .cf-spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #22c55e;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .success-check {
+            width: 24px;
+            height: 24px;
+            background: #22c55e;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex text-slate-800">
+    
+    <!-- Left Side: Branding (Hidden on mobile) -->
+    <div class="hidden lg:flex w-5/12 bg-darkblue text-white flex-col relative overflow-hidden bg-grid">
+        <div class="absolute inset-0 bg-gradient-to-br from-blue-900/90 to-blue-600/90 mix-blend-multiply"></div>
+        
+        <div class="relative z-10 p-12 flex flex-col h-full">
+            <div class="flex items-center gap-3 text-2xl font-black mb-16">
+                <div class="w-10 h-10 bg-white text-primary rounded-xl flex items-center justify-center">
+                    <span class="text-xl">N</span>
+                </div>
+                NovaPay™
+            </div>
+            
+            <div class="mt-auto mb-auto">
+                <h1 class="text-5xl font-black mb-2 tracking-tight">UPI payments,</h1>
+                <h1 class="text-5xl font-black text-blue-400 mb-6 tracking-tight">automated.</h1>
+                
+                <p class="text-blue-100/80 text-lg mb-10 max-w-md leading-relaxed font-medium">
+                    The most reliable UPI payment gateway built for developers. Accept payments in seconds with a simple API call.
+                </p>
+                
+                <ul class="space-y-4">
+                    <li class="flex items-center gap-3 text-sm font-medium text-blue-50">
+                        <div class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                            <i class="fa-solid fa-check text-[10px]"></i>
+                        </div>
+                        Real-time transaction matching
+                    </li>
+                    <li class="flex items-center gap-3 text-sm font-medium text-blue-50">
+                        <div class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                            <i class="fa-solid fa-check text-[10px]"></i>
+                        </div>
+                        Instant webhook callbacks on payment
+                    </li>
+                    <li class="flex items-center gap-3 text-sm font-medium text-blue-50">
+                        <div class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                            <i class="fa-solid fa-check text-[10px]"></i>
+                        </div>
+                        No commission — zero platform fees
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Side: Login Form -->
+    <div class="w-full lg:w-7/12 flex items-center justify-center p-6 sm:p-12 relative">
+        <a href="/" class="absolute top-8 left-8 lg:hidden text-slate-500 hover:text-slate-800 text-sm font-bold flex items-center gap-2">
+            <i class="fa-solid fa-chevron-left"></i> Home
+        </a>
+
+        <div class="w-full max-w-md bg-white p-8 sm:p-10 rounded-3xl shadow-2xl shadow-slate-200/50 border border-slate-100">
+            
+            <div class="flex items-center justify-center gap-2 text-2xl font-black mb-6 text-slate-800 lg:hidden">
+                <span class="text-primary text-3xl">N</span> NovaPay™
+            </div>
+
+            <div class="text-center mb-8">
+                <h2 class="text-2xl font-black text-slate-800 tracking-tight">Welcome back</h2>
+                <p class="text-slate-500 text-sm mt-2">Sign in to your NovaPay account</p>
+            </div>
+
+            {% if error %}
+            <div class="bg-red-50 border border-red-100 text-red-600 text-xs font-bold p-3 rounded-xl mb-6 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-circle-exclamation"></i> {{ error }}
+            </div>
+            {% endif %}
+
+            <!-- Social Logins -->
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <a href="/login/google" class="flex items-center justify-center gap-2 py-2.5 border border-slate-200 rounded-xl hover:bg-slate-50 transition text-sm font-bold text-slate-700">
+                    <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-4 h-4" alt="Google"> Google
+                </a>
+                <button type="button" class="flex items-center justify-center gap-2 py-2.5 border border-slate-200 rounded-xl hover:bg-slate-50 transition text-sm font-bold text-slate-700">
+                    <i class="fa-solid fa-fingerprint text-primary text-base"></i> Passkey
+                </button>
+            </div>
+
+            <div class="flex items-center mb-6">
+                <div class="flex-1 h-px bg-slate-200"></div>
+                <span class="px-3 text-xs text-slate-400 font-medium">or sign in with email</span>
+                <div class="flex-1 h-px bg-slate-200"></div>
+            </div>
+
+            <form method="POST" action="/login" id="loginForm">
+                <div class="mb-4">
+                    <label class="block text-sm font-bold text-slate-700 mb-1.5">Email address or Username</label>
+                    <input type="text" name="username" class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="you@example.com" required>
+                </div>
+                
+                <div class="mb-5 relative">
+                    <div class="flex justify-between items-center mb-1.5">
+                        <label class="block text-sm font-bold text-slate-700">Password</label>
+                        <a href="#" class="text-xs font-bold text-primary hover:underline">Forgot password?</a>
+                    </div>
+                    <input type="password" name="password" id="password" class="w-full pl-4 pr-10 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="••••••••" required>
+                    <button type="button" onclick="togglePassword()" class="absolute right-3 bottom-2.5 text-slate-400 hover:text-slate-600">
+                        <i class="fa-regular fa-eye" id="eyeIcon"></i>
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-2 mb-6">
+                    <input type="checkbox" id="remember" class="w-4 h-4 text-primary bg-white border-slate-300 rounded focus:ring-primary">
+                    <label for="remember" class="text-sm text-slate-600">Keep me signed in for 7 days</label>
+                </div>
+
+                <!-- Dummy Cloudflare Box -->
+                <div class="cf-box" id="cfBox">
+                    <div class="flex items-center gap-3">
+                        <div class="cf-spinner" id="cfSpinner"></div>
+                        <span class="text-sm text-slate-600" id="cfText">Verifying...</span>
+                    </div>
+                    <div class="flex flex-col items-end">
+                        <div class="flex items-center gap-1 text-orange-500 font-black text-[10px] tracking-tight">
+                            <i class="fa-brands fa-cloudflare text-lg"></i> CLOUDFLARE
+                        </div>
+                        <div class="text-[8px] text-slate-400 mt-0.5"><a href="#" class="hover:underline">Privacy</a> • <a href="#" class="hover:underline">Help</a></div>
+                    </div>
+                </div>
+
+                <button type="button" id="submitBtn" disabled class="w-full bg-primary hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-md shadow-blue-500/20 text-sm flex items-center justify-center gap-2 opacity-50 cursor-not-allowed">
+                    Sign In <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </form>
+
+            <p class="text-center mt-6 text-sm text-slate-500">
+                Don't have an account? <a href="/register" class="text-primary font-bold hover:underline">Create one free</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Password toggle
+        function togglePassword() {
+            const pwd = document.getElementById('password');
+            const icon = document.getElementById('eyeIcon');
+            if (pwd.type === 'password') {
+                pwd.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                pwd.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+
+        // Simulate Cloudflare verification
+        setTimeout(() => {
+            document.getElementById('cfSpinner').outerHTML = '<div class="success-check"><i class="fa-solid fa-check"></i></div>';
+            document.getElementById('cfText').innerText = 'Success!';
+            document.getElementById('cfText').classList.add('text-slate-800', 'font-bold');
+            
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            
+            // Change button type to submit so it works
+            btn.type = 'submit';
+        }, 1500);
+    </script>
+</body>
+</html>

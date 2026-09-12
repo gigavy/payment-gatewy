@@ -1,0 +1,172 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NovaPay Dashboard</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        sidebar: '#0f172a',
+                        primary: '#4f46e5',
+                        success: '#10b981',
+                        warning: '#f59e0b',
+                        danger: '#ef4444',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .sidebar-link { transition: all 0.2s ease; }
+        .sidebar-link:hover { background-color: rgba(255,255,255,0.1); color: white; }
+        .sidebar-link.active { background-color: #4f46e5; color: white; border-radius: 0.5rem; }
+        .sidebar-scroll::-webkit-scrollbar { display: none; }
+        .sidebar-scroll { -ms-overflow-style: none; scrollbar-width: none; }</style>
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="flex h-screen overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-sidebar text-slate-300 flex flex-col h-full shrink-0">
+        <div class="h-16 flex items-center px-6 border-b border-slate-800">
+            <div class="text-2xl font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-n fa-lg text-primary"></i>
+                <span>NovaPay</span>
+            </div>
+        </div>
+        <div class="px-6 py-2 text-xs text-slate-500">Secure Payments. Faster Growth.</div>
+
+                <nav class="flex-1 overflow-y-auto sidebar-scroll px-4 py-4 space-y-1">
+            <div class="mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider px-3">Main Menu</div>
+            
+            <a href="/dashboard" class="sidebar-link {% if request.path == '/dashboard' %}active{% endif %} flex items-center gap-3 px-3 py-2 text-sm font-medium">
+                <i class="fa-solid fa-border-all w-5 text-center"></i> Dashboard
+            </a>
+            
+            <a href="/transactions" class="sidebar-link {% if request.path == '/transactions' %}active{% endif %} flex items-center gap-3 px-3 py-2 text-sm font-medium">
+                <i class="fa-solid fa-right-left w-5 text-center"></i> Transactions
+            </a>
+            
+            <a href="/payment_links" class="sidebar-link {% if request.path == '/payment_links' %}active{% endif %} flex items-center gap-3 px-3 py-2 text-sm font-medium">
+                <i class="fa-solid fa-link w-5 text-center"></i> Payment Links
+            </a>
+            
+            
+            
+            <a href="/connect" class="sidebar-link {% if request.path == '/connect' %}active{% endif %} flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-300">
+                <i class="fa-solid fa-plug w-5 text-center"></i> Connect Accounts
+            </a>
+            
+            <a href="/webhook_logs" class="sidebar-link {% if request.path == '/webhook_logs' %}active{% endif %} flex items-center gap-3 px-3 py-2 text-sm font-medium">
+                <i class="fa-solid fa-satellite-dish w-5 text-center"></i> Webhooks
+            </a>
+            
+            <a href="/api_docs" class="sidebar-link {% if request.path == '/api_docs' %}active{% endif %} flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-300">
+                <i class="fa-solid fa-key w-5 text-center"></i> API Keys
+            </a>
+            
+            
+            
+
+            
+            
+            
+            <a href="/settings" class="sidebar-link {% if request.path == '/settings' %}active{% endif %} flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-300">
+                <i class="fa-solid fa-gear w-5 text-center"></i> Settings
+            </a>
+
+            <div class="mt-6 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider px-3">Account</div>
+            <a href="/logout" class="sidebar-link flex items-center gap-3 px-3 py-2 text-sm font-medium text-red-400 hover:text-red-300">
+                <i class="fa-solid fa-right-from-bracket w-5 text-center"></i> Logout
+            </a>
+        </nav>
+        
+        <div class="p-4 border-t border-slate-800">
+            <div class="bg-slate-800 rounded-lg p-4">
+                <p class="text-xs font-medium text-white mb-1">Integrate with Ease</p>
+                <p class="text-xs text-slate-400 mb-3">Start accepting payments in minutes.</p>
+                <button class="w-full bg-primary text-white text-xs font-medium py-2 rounded hover:bg-indigo-700 transition">View Docs <i class="fa-solid fa-arrow-right ml-1"></i></button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col h-full overflow-hidden">
+        
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-end px-6 shrink-0 z-10 shadow-sm">
+            <div class="flex items-center gap-2 bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-full text-xs font-bold border border-emerald-200">
+                <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                Live Mode
+            </div>
+        </header>
+
+        <main class="flex-1 overflow-y-auto p-6 lg:p-8 relative">
+            {% block content %}{% endblock %}
+        </main>
+        
+    </div>
+
+    
+
+    <script>
+        const pModal = document.getElementById('paymentModal');
+        const pModalContent = document.getElementById('paymentModalContent');
+        
+        function showCreatePaymentModal() {
+            pModal.classList.remove('hidden');
+            setTimeout(() => {
+                pModal.classList.remove('opacity-0');
+                pModalContent.classList.remove('scale-95');
+            }, 10);
+        }
+        
+        function hideCreatePaymentModal() {
+            pModal.classList.add('opacity-0');
+            pModalContent.classList.add('scale-95');
+            setTimeout(() => {
+                pModal.classList.add('hidden');
+            }, 200);
+        }
+
+        pModal.addEventListener('click', (e) => {
+            if (e.target === pModal) hideCreatePaymentModal();
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+

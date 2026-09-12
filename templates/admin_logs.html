@@ -1,0 +1,58 @@
+﻿{% extends 'admin_base.html' %}
+
+{% block content %}
+<div class="mb-8 flex items-center gap-3">
+    <div class="w-10 h-10 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center text-lg shadow-sm border border-rose-100">
+        <i class="fa-solid fa-bug"></i>
+    </div>
+    <div>
+        <h1 class="text-2xl font-black text-slate-800">System Logs & Errors</h1>
+        <p class="text-xs text-slate-500 mt-1">Track failed webhooks and system events in real-time.</p>
+    </div>
+</div>
+
+<div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+    <div class="flex items-center justify-between mb-6">
+        <h3 class="text-base font-bold text-slate-800"><i class="fa-solid fa-terminal text-primary mr-2"></i> Event Log</h3>
+        <button onclick="window.location.reload()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold px-4 py-2 rounded-lg transition border border-slate-200 shadow-sm"><i class="fa-solid fa-rotate-right mr-1"></i> Refresh</button>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="border-b border-slate-200 text-[10px] text-slate-500 uppercase tracking-wider">
+                    <th class="p-3 font-bold w-32">Time</th>
+                    <th class="p-3 font-bold w-32">Type</th>
+                    <th class="p-3 font-bold">Message</th>
+                </tr>
+            </thead>
+            <tbody class="text-sm text-slate-700 font-mono">
+                {% for log in logs %}
+                <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td class="p-3 text-[10px] text-slate-500">{{ log[2][:19].replace('T', ' ') }}</td>
+                    <td class="p-3">
+                        {% if log[0] == 'error' %}
+                            <span class="bg-red-50 text-red-600 border border-red-100 text-[10px] font-bold px-2 py-0.5 rounded">ERROR</span>
+                        {% elif log[0] == 'webhook_fail' %}
+                            <span class="bg-amber-50 text-amber-600 border border-amber-100 text-[10px] font-bold px-2 py-0.5 rounded">WEBHOOK_FAIL</span>
+                        {% else %}
+                            <span class="bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold px-2 py-0.5 rounded">{{ log[0]|upper }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="p-3 text-xs text-slate-800 break-all">{{ log[1] }}</td>
+                </tr>
+                {% endfor %}
+                
+                {% if not logs %}
+                <tr>
+                    <td colspan="3" class="p-8 text-center text-slate-500">
+                        <i class="fa-solid fa-check-circle text-3xl mb-3 text-emerald-400"></i>
+                        <p class="font-sans">System is clean! No logs recorded yet.</p>
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,237 @@
+﻿{% extends 'base.html' %}
+
+{% block content %}
+<div class="mb-8">
+    <div class="flex justify-between items-end">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800">Connect Accounts</h1>
+            <p class="text-sm font-medium text-slate-500 mt-1">Manage your payment gateway connections and access your API keys.</p>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+    
+    <!-- Connection Status Card -->
+    <div class="lg:col-span-1 space-y-6">
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+            <h3 class="text-base font-bold text-slate-800 mb-4">Current Connection</h3>
+            
+            {% if user_info and user_info.upi_id %}
+                <div class="flex items-center gap-4 mb-6">
+                    {% if user_info.provider == 'paytm' %}
+                        <div class="w-12 h-12 rounded-xl border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center bg-white"><img src="https://upload.wikimedia.org/wikipedia/commons/2/24/Paytm_Logo_%28standalone%29.svg" alt="Paytm" class="w-8 h-8"></div>
+                        <div>
+                            <h4 class="text-lg font-bold text-slate-800">Paytm Biz</h4>
+                            <div class="flex items-center gap-1.5 text-emerald-500 text-xs font-bold mt-1">
+                                <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div> Active & Working
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="w-12 h-12 rounded-xl border border-slate-200 overflow-hidden shrink-0"><img src="https://i.ibb.co/bRMDCCVC/279e01e3d0f86ec724cc04e47746cd50-1.jpg" alt="FamPay" class="w-full h-full object-cover"></div>
+                        <div>
+                            <h4 class="text-lg font-bold text-slate-800">FamPay</h4>
+                            <div class="flex items-center gap-1.5 text-emerald-500 text-xs font-bold mt-1">
+                                <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div> Active & Working
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="bg-slate-50 rounded-lg p-4 border border-slate-100 mb-6">
+                    <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Connected Email</p>
+                    <p class="text-sm font-medium text-slate-800">{{ user_info.gmail }}</p>
+                    
+                    <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 mt-4">UPI ID</p>
+                    <p class="text-sm font-medium text-slate-800">{{ user_info.upi_id }}</p>
+                </div>
+                
+                <a href="/delete_account" class="block w-full text-center text-sm font-bold text-red-500 hover:text-red-600 bg-red-50 hover:bg-red-100 py-2.5 rounded-lg transition-colors">
+                    Disconnect Account
+                </a>
+            {% else %}
+                <div class="text-center py-6">
+                    <div class="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-3 border border-slate-100">
+                        <i class="fa-solid fa-link-slash text-slate-400 text-2xl"></i>
+                    </div>
+                    <h4 class="text-base font-bold text-slate-800">Not Connected</h4>
+                    <p class="text-xs text-slate-500 mt-1 px-4">Please connect a payment provider to start generating API keys.</p>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- API Key Card -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+            <h3 class="text-base font-bold text-slate-800 mb-4">API Credentials</h3>
+            
+            {% if user_info and user_info.upi_id %}
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Secret API Key</p>
+                <div class="flex items-center gap-2">
+                    <input type="text" readonly value="{{ user_info.api_key }}" id="apiKeyInput" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-sm font-mono text-slate-700 outline-none">
+                    <button onclick="copyApiKey()" class="bg-slate-800 text-white p-2.5 rounded-lg hover:bg-slate-900 transition-colors" title="Copy to clipboard">
+                        <i class="fa-regular fa-copy"></i>
+                    </button>
+                </div>
+                <p class="text-[11px] text-amber-600 font-medium mt-2 bg-amber-50 p-2 rounded"><i class="fa-solid fa-triangle-exclamation"></i> Keep this key secret. Do not share it.</p>
+            {% else %}
+                <div class="bg-slate-50 rounded-lg p-4 text-center border border-slate-100">
+                    <i class="fa-solid fa-lock text-slate-300 text-xl mb-2"></i>
+                    <p class="text-sm font-medium text-slate-500">Connect an account first to generate your API key.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Connection Form -->
+    <div class="lg:col-span-2">
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 h-full">
+            <h3 class="text-base font-bold text-slate-800 mb-6">{% if user_info and user_info.upi_id %}Update Connection{% else %}Setup New Connection{% endif %}</h3>
+            
+            <form id="connectForm" onsubmit="submitConnectForm(event)">
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">1. Select Payment Provider</label>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <label class="border rounded-xl p-4 cursor-pointer transition-all flex flex-col items-center gap-3 provider-label">
+                                <input type="radio" name="provider" value="fampay" class="hidden provider-radio" onchange="updateUpiLabel()" {% if not user_info or user_info.provider == 'fampay' %}checked{% endif %}>
+                                <div class="w-10 h-10 rounded-lg overflow-hidden border border-slate-100 shadow-sm"><img src="https://i.ibb.co/bRMDCCVC/279e01e3d0f86ec724cc04e47746cd50-1.jpg" alt="FamPay" class="w-full h-full object-cover"></div>
+                                <span class="text-sm font-bold text-slate-700">FamPay</span>
+                            </label>
+                            <label class="border rounded-xl p-4 cursor-pointer transition-all flex flex-col items-center gap-3 provider-label">
+                                <input type="radio" name="provider" value="paytm" class="hidden provider-radio" onchange="updateUpiLabel()" {% if user_info and user_info.provider == 'paytm' %}checked{% endif %}>
+                                <div class="w-10 h-10 flex items-center justify-center"><img src="https://upload.wikimedia.org/wikipedia/commons/2/24/Paytm_Logo_%28standalone%29.svg" alt="Paytm" class="w-full h-full"></div>
+                                <span class="text-sm font-bold text-slate-700">Paytm Biz</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label id="upiLabelText" class="block text-sm font-bold text-slate-700 mb-2">FamPay UPI ID</label>
+                            <input type="text" name="upi_id" required placeholder="name@fam" value="{{ user_info.upi_id if user_info else '' }}" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:bg-white outline-none transition-all text-sm font-medium text-slate-800">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Gmail Address</label>
+                            <input type="email" name="gmail" required placeholder="you@gmail.com" value="{{ user_info.gmail if user_info else '' }}" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:bg-white outline-none transition-all text-sm font-medium text-slate-800">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Gmail App Password</label>
+                        <input type="password" name="app_pass" required placeholder="16-digit app password" value="{{ user_info.app_pass if user_info else '' }}" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:bg-white outline-none transition-all text-sm font-medium text-slate-800 max-w-md">
+                        <p class="text-xs text-slate-500 mt-2 font-medium"><i class="fa-solid fa-circle-info mr-1 text-primary"></i> Must be a 16-digit password generated from Google Account Security > 2-Step Verification > App Passwords.</p>
+                    </div>
+                </div>
+                
+                <div class="mt-8 pt-6 border-t border-slate-100 flex justify-end">
+                    <button type="submit" id="btnConnect" class="bg-primary hover:bg-indigo-700 text-white font-bold py-2.5 px-8 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md shadow-indigo-200">
+                        <span>Secure & Connect Backend</span>
+                        <i class="fa-solid fa-lock text-xs"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function updateUpiLabel() {
+        const val = document.querySelector('input[name="provider"]:checked').value;
+        document.getElementById('upiLabelText').innerText = val === 'paytm' ? 'Paytm UPI ID' : 'FamPay UPI ID';
+        
+        document.querySelectorAll('.provider-label').forEach(el => {
+            el.classList.remove('border-primary', 'bg-indigo-50', 'ring-2', 'ring-primary', 'ring-offset-1');
+            el.classList.add('border-slate-200');
+        });
+        const activeInput = document.querySelector('input[name="provider"]:checked');
+        activeInput.parentElement.classList.remove('border-slate-200');
+        activeInput.parentElement.classList.add('border-primary', 'bg-indigo-50', 'ring-2', 'ring-primary', 'ring-offset-1');
+    }
+
+    async function submitConnectForm(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btnConnect');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Verifying...';
+        btn.disabled = true;
+        btn.classList.add('opacity-75');
+
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData.entries());
+
+        try {
+            const response = await fetch('/save_account', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (result.status === 'success') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Connected!',
+                    text: result.message,
+                    confirmButtonColor: '#4f46e5',
+                    timer: 2000,
+                    showConfirmButton: false
+                }).then(() => {
+                    window.location.reload();
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Connection Failed',
+                    text: result.message,
+                    confirmButtonColor: '#ef4444'
+                });
+            }
+        } catch (error) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Something went wrong. Please try again.',
+                confirmButtonColor: '#ef4444'
+            });
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            btn.classList.remove('opacity-75');
+        }
+    }
+    
+    function copyApiKey() {
+        var copyText = document.getElementById("apiKeyInput");
+        copyText.select();
+        copyText.setSelectionRange(0, 99999);
+        navigator.clipboard.writeText(copyText.value);
+        
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: 'API Key copied to clipboard',
+            showConfirmButton: false,
+            timer: 2000
+        });
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        if(document.querySelector('input[name="provider"]:checked')) {
+            updateUpiLabel();
+        }
+        
+        {% if success %}
+        Swal.fire({ icon: 'success', title: 'Success', text: '{{ success }}', timer: 2000, showConfirmButton: false });
+        {% endif %}
+    });
+</script>
+{% endblock %}
+
+
+

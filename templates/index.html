@@ -1,0 +1,744 @@
+<!doctype html>
+<html lang="en">
+<head>
+
+  <!-- Structured Data (JSON-LD) for AI & Search Engines -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "SoftwareApplication",
+          "name": "NovaPay",
+          "alternateName": [
+            "NovaPay",
+            "UPI / Paytm",
+            "UPI Apps",
+            "NovaPay Gateway",
+            "NovaPay API",
+            "UPI / Paytm Payment Gateway",
+            "NovaPay UPI"
+          ],
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "Web",
+          "description": "100% Free Automated UPI Payment verification gateway for developers in India accepting NovaPay and UPI / Paytm.",
+          "about": {
+            "@type": "Thing",
+            "name": "UPI / Paytm",
+            "alternateName": "NovaPay",
+            "sameAs": "https://famapp.in"
+          },
+          "knowsAbout": [
+            "NovaPay",
+            "UPI / Paytm",
+            "NovaPay UPI Integration",
+            "NovaPay Payment Gateway",
+            "UPI / Paytm UPI Integration",
+            "NovaPay Login",
+            "Automated IMAP Receipt Verification",
+            "Dynamic UPI QR Generation",
+            "UPI Apps UPI API"
+          ],
+          "publisher": {
+            "@type": "Organization",
+            "name": "NovaPay Devs",
+            "legalName": "NovaPay Devs",
+            "identifier": {
+              "@type": "PropertyValue",
+              "name": "Udyam Registration Number",
+              "value": "UDYAM-NOVAPAY-2026"
+            },
+            "description": "Govt. of India Recognized MSME",
+            "url": "https://novapay.in",
+            "logo": "https://famgateway.in/assets/img/logo.png",
+            "contactPoint": {
+              "@type": "ContactPoint",
+              "telephone": "+91-9771348544",
+              "contactType": "customer support",
+              "areaServed": "IN",
+              "availableLanguage": ["en", "hi"]
+            },
+            "sameAs": [
+              "https://t.me/KaranBhaiya",
+              "https://t.me/KaranBhaiya_related",
+              "https://www.youtube.com/@KaranBhaiya",
+              "https://www.instagram.com/KaranBhaiya/",
+              "https://github.com/KaranBhaiya",
+              "https://x.com/KaranBhaiya",
+              "http://www.linkedin.com/in/KaranBhaiya",
+              "https://KaranBhaiyahost.in/"
+            ]
+          },
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "INR"
+          }
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Does NovaPay (UPI / Paytm) have an official payment gateway API for developers?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "No, NovaPay / UPI / Paytm (now UPI Apps) does not offer an official public payment gateway API or webhooks for website checkouts. NovaPay solves this by providing an automated IMAP-based bridge that verifies payments instantly into your personal NovaPay account."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How does NovaPay automate NovaPay payments?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "NovaPay generates dynamic UPI QRs with Bank UTR Idempotency locking, verifying clean exact amounts with zero decimal changes. When payment is received, NovaPay matches the incoming email confirmation and triggers automated webhooks to your server within 3-5 seconds."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Do I need GST or business registration to use NovaPay with NovaPay?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "No. NovaPay is built specifically for solo developers, students, and micro-merchants who do not have GST registration or corporate bank accounts. You can collect payments directly to your personal NovaPay UPI ID."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Is NovaPay free to use for NovaPay payment verification?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes, NovaPay provides 100% free transaction fee processing with zero commission forever."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  </script>
+
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UPI / Paytm API &amp; UPI Payment Gateway for Developers (100% Free) — NovaPay</title>
+<meta name="description" content="Looking for an official UPI / Paytm API? NovaPay provides the 100% free, non-custodial UPI (Paytm/PhonePe) UPI payment gateway API for developers in India. 0% fees, 0s instant settlements, and official Python SDK.">
+<meta name="keywords" content="NovaPay, UPI / Paytm, NovaPay Gateway, NovaPay UPI, NovaPay API, Free UPI / Paytm API, Unofficial UPI / Paytm API, UPI / Paytm Gateway, UPI / Paytm PHP Integration, 100% Free UPI Gateway, Automated UPI Verification, NovaPay, Payment Links, Accept Payments India Free, Govt Recognized MSME, NovaPay Team, NovaPay Devs">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+<meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+<meta name="author" content="NovaPay Team">
+<meta property="og:title" content="UPI / Paytm API &amp; UPI Payment Gateway for Developers (100% Free) — NovaPay">
+<meta property="og:description" content="Looking for an official UPI / Paytm API? NovaPay provides the 100% free, non-custodial UPI (Paytm/PhonePe) UPI payment gateway API for developers in India. 0% fees, 0s instant settlements, and official Python SDK.">
+<meta property="og:image" content="https://famgateway.in/assets/img/og-image.png">
+<meta property="og:url" content="https://novapay.in/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="UPI / Paytm API &amp; UPI Payment Gateway for Developers (100% Free) — NovaPay">
+<meta name="twitter:description" content="Looking for an official UPI / Paytm API? NovaPay provides the 100% free, non-custodial UPI (Paytm/PhonePe) UPI payment gateway API for developers in India. 0% fees, 0s instant settlements, and official Python SDK.">
+<meta name="twitter:image" content="https://famgateway.in/assets/img/og-image.png">
+<link rel="canonical" href="https://novapay.in/" />
+<link rel="icon" type="image/x-icon" href="https://famgateway.in/favicon.ico">
+<link rel="icon" type="image/png" href="https://famgateway.in/favicon.png">
+<link rel="apple-touch-icon" href="https://famgateway.in/favicon.png">
+<link rel="stylesheet" href="https://famgateway.in/assets/css/style.css?v=4.6">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script defer src="https://unpkg.com/lucide@latest"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  if (window.lucide) { lucide.createIcons(); }
+});
+</script>
+<!-- Google tag (gtag.js) - Google Analytics 4 -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-6L45EVBBK3"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-6L45EVBBK3', {
+    cookie_flags: 'SameSite=None;Secure'
+  });
+</script>
+<!-- Google Preferred Sources Interactive Button Script (Manual Control) -->
+<script async preferred-sources-control="manual" src="https://news.google.com/swg/js/v1/publisher.js"></script>
+  <link rel="stylesheet" href="https://famgateway.in/assets/css/landing.css">
+
+</head>
+<body>
+
+<!-- Google One Tap Sign-In for Homepage Visitors -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<div id="g_id_onload"
+     data-client_id="86073538173-t2pv108ss8k3plb3n3q4bkv90jgp82je.apps.googleusercontent.com"
+     data-context="signin"
+     data-ux_mode="popup"
+     data-login_uri="https://novapay.in/auth-google-onetap.php"
+     data-auto_prompt="true"
+     data-itp_support="true">
+</div>
+  <header class="nav">
+    <div class="shell nav-inner">
+      <a class="brand" href="/" style="padding:0;"><span style="font-weight: 800; font-size: 24px; color: white; letter-spacing: -0.5px;">NovaPay</span></a>
+      <ul class="links">
+        <li><a href="index.php#flow">How it works</a></li>
+        <li><a href="index.php#api">API</a></li>
+        <li><a href="blog/how-it-works.php">Architecture</a></li>
+        <li><a href="/api_docs">Docs</a></li>
+      </ul>
+      <div class="nav-actions"><a class="login" href="/login">Sign in</a><a class="nav-cta" href="/register">Get API key <span>↗</span></a></div>
+      <button class="menu" aria-label="Open menu" onclick="toggleMobileNav()"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 7h16M4 12h16M4 17h16" />
+        </svg></button>
+    </div>
+  </header>
+  <nav id="mobile-nav" class="mobile-nav"><a href="#flow">How it works</a><a href="#api">API</a><a href="blog/how-it-works.php">Architecture</a><a href="/api_docs">Docs</a>
+    <div class="mobile-menu-actions"><a class="mobile-register" href="/register">Register</a><a class="mobile-login" href="/login">Login</a></div>
+  </nav>
+  <div id="mobile-overlay" class="mobile-overlay" onclick="closeMobileNav()"></div>
+  <main>
+    <section class="hero">
+      <div class="shell hero-grid">
+        <div>
+          <div class="hero-eyebrow-wrap"><div class="eyebrow"><i class="fa-solid fa-bolt" style="color: #f59e0b; margin-right: 6px;"></i> NovaPay &amp; UPI / Paytm payment gateway for developers</div></div>
+          <div class="hero-h1-wrap"><h1 style="font-size:clamp(40px, 5vw, 68px);">The <em>100% Free</em> NovaPay API.</h1></div>
+          <div class="hero-copy-wrap"><p class="hero-copy">Create a NovaPay (UPI / Paytm) payment link, show a UPI QR, and know exactly when the money arrives. NovaPay gives Indian developers a simple path from checkout to confirmation — <b>100% Free Forever with 0% Transaction Fees.</b></p></div>
+          <div class="hero-actions-wrap"><div class="hero-actions"><a class="primary" href="/register">Create your free account <span>→</span></a><a class="secondary" href="/api_docs">Read the API docs <span>↗</span></a></div></div>
+          <div class="hero-proof-wrap"><div class="proof"><span><b>✓</b> 100% Free Forever</span><span><b>✓</b> 0% Transaction Fees</span><span><b>✓</b> Unlimited API Calls</span></div></div>
+        </div>
+        <div class="hero-visual">
+          <div class="hero-card-wrap">
+            <div class="product">
+              <div class="product-head">
+                <div class="dots"><i></i><i></i><i></i></div><span>novapay.in/pay.php</span><span>LIVE</span>
+              </div>
+              <div class="product-main">
+                <div class="gateway-brand"><span style="font-weight: 800; font-size: 20px; color: #0f172a; letter-spacing: -0.5px;">NovaPay</span></div>
+                <div class="product-label">Order total</div>
+                <div class="money">₹499 <small>INR</small></div>
+                <div class="pay-card">
+                  <div class="pay-row"><span>Order ID</span><b>order_8H2KQ</b></div>
+                  <div class="pay-row"><span>UPI / Paytm payment link</span><b>Created</b></div>
+                  <div class="pay-row"><span>Verification</span><span class="status"><i></i>Payment received</span></div>
+                </div>
+                <div class="flow">
+                  <div>Link created</div><span>→</span>
+                  <div>Pay with UPI / Paytm</div><span>→</span>
+                  <div class="active">Confirmed</div>
+                </div>
+              </div>
+              <div class="hero-note">Verified in seconds ✓</div>
+            </div>
+          </div><!-- /.hero-card-wrap -->
+        </div>
+      </div>
+    </section>
+    <div class="ticker">
+      <div class="ticker-track shell"><span>UPI / Paytm Gateway</span><span>UPI QR Generation</span><span>Instant Payment Links</span><span>Stateless Verification</span><span>Hosted Checkout</span></div>
+    </div>
+    
+    <section class="section anim-fade-up" style="padding-top: 60px; padding-bottom: 40px; background: var(--surface-page, #f8fafc);">
+      <div class="shell" style="max-width: 860px; margin: 0 auto; text-align: center;">
+          <div style="display:inline-flex; align-items:center; gap:8px; background:rgba(37,99,235,0.08); color:#2563eb; border:1px solid rgba(37,99,235,0.2); border-radius:99px; padding:6px 16px; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:16px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Developer Walkthrough
+          </div>
+          <h2 style="font-size:clamp(26px, 4vw, 36px); margin-bottom: 24px; color: #0f172a; letter-spacing:-0.5px; text-align: center; font-weight: 800;">Setting up NovaPay in Minutes</h2>
+          <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 16px; box-shadow: 0 20px 40px -15px rgba(15,23,42,0.15); border: 1px solid #e2e8f0; background: #0f172a;">
+              {% if yt_link %}
+                <iframe style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" src="{{ yt_link }}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+              {% else %}
+                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #1e293b, #0f172a);">
+                  <div style="width: 80px; height: 80px; background: #dc2626; border-radius: 16px; display: flex; align-items: center; justify-content: center;">
+                    <svg style="width: 32px; height: 32px; color: white; margin-left: 8px;" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                  </div>
+                  <h3 style="color: white; font-weight: bold; margin-top: 24px; font-size: 20px;">Admin: Add your YouTube Link</h3>
+                  <p style="color: #94a3b8; margin-top: 8px; font-size: 14px;">Go to Admin Panel &rarr; Gateway Settings to set the video.</p>
+                </div>
+              {% endif %}
+          </div>
+      </div>
+    </section>
+    <section id="flow" class="section">
+      <div class="shell">
+        <div class="flow-intro">
+          <div class="anim-slide-left">
+            <div class="kicker">The NovaPay Official Flow</div>
+            <h2 style="font-size:clamp(30px, 4vw, 42px);">The Official Automated UPI Payment Gateway for UPI / Paytm.</h2>
+            <p class="section-intro">Generate a UPI QR, display the exact payable amount, then check the order status after payment.</p>
+          </div>
+          <div class="api-flow-card anim-slide-right"><b>YOUR APP → FAMGATEWAY</b>
+            <div class="api-flow-line">
+              <div class="api-flow-node">API request<small>UPI + amount</small></div><span class="api-flow-arrow">→</span>
+              <div class="api-flow-node">QR response<small>order + QR URL</small></div><span class="api-flow-arrow">→</span>
+              <div class="api-flow-node">Status check<small>pending / paid</small></div>
+            </div>
+            <div class="api-flow-result">{ "status": "success", "utr": "..." }</div>
+          </div>
+        </div>
+        <div class="steps anim-stagger">
+          <article class="step">
+            <div class="step-no">01 / CONNECT</div>
+            <h3>Get your API key.</h3>
+            <p>Create an account and connect the Gmail account used for UPI / Paytm payment notifications.</p>
+          </article>
+          <article class="step">
+            <div class="step-no">02 / CREATE</div>
+            <h3>Generate a QR.</h3>
+            <p>Send a UPI ID and amount. The API returns an order ID, QR URL, and unique payable amount.</p>
+          </article>
+          <article class="step">
+            <div class="step-no">03 / CHECK</div>
+            <h3>Check payment status.</h3>
+            <p>Use the order ID to check whether payment is pending, successful, or expired.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+    <section id="api" class="section section-dark anim-fade-up">
+      <div class="shell integration">
+        <div class="anim-slide-left">
+          <div class="kicker">Small API surface. Big control.</div>
+          <h2>Two calls. One clear answer.</h2>
+          <p class="section-intro">Create a payment session, then ask for its status. The response is clean JSON, so it fits into whatever you already build with.</p>
+          <div class="code">
+            <div class="code-top"><span>create-payment.py</span><span>copy</span></div>
+            <pre><span class="dim"># create a payment link</span>
+<span class="green">GET</span> /api/qr.php
+<span class="orange">upi</span>: "username@fam"
+<span class="orange">amount</span>: 499
+
+<span class="dim"># response</span>
+order_id, qr_url, payable_amount</pre>
+          </div>
+        </div>
+        <div class="feature-list anim-stagger">
+          <div class="feature"><span class="feature-num" style="color:#60a5fa; font-weight:800;">01</span>
+            <div>
+              <h3>Bank UTR Idempotency</h3>
+              <p>Verify clean exact amounts with atomic database locking, zero decimal changes needed.</p>
+            </div><span class="arrow">↗</span>
+          </div>
+          <div class="feature"><span class="feature-num" style="color:#60a5fa; font-weight:800;">02</span>
+            <div>
+              <h3>UPI QR generation</h3>
+              <p>Create a QR code for a UPI ID and the exact payable amount.</p>
+            </div><span class="arrow">↗</span>
+          </div>
+          <div class="feature"><span class="feature-num" style="color:#60a5fa; font-weight:800;">03</span>
+            <div>
+              <h3>Hosted payment page</h3>
+              <p>Use the built-in checkout page for a payment link when you need a ready UI.</p>
+            </div><span class="arrow">↗</span>
+          </div>
+          <div class="feature"><span class="feature-num" style="color:#60a5fa; font-weight:800;">04</span>
+            <div>
+              <h3>Status verification</h3>
+              <p>Check an order and receive its pending, successful, or expired state.</p>
+            </div><span class="arrow">↗</span>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- Proudly Built in India Section -->
+    <section style="background:#fff; padding:100px 0; text-align:center; position:relative; overflow:hidden; border-bottom:1px solid #e2e8f0;">
+      <div style="position:absolute; top:0; left:0; width:100%; height:4px; background:linear-gradient(90deg, #FF9933 0%, #FFFFFF 50%, #138808 100%);"></div>
+      <div class="shell anim-fade-up">
+        <div style="display:inline-flex; align-items:center; justify-content:center; width:80px; height:80px; border-radius:50%; background:#fff; border:2px solid #e2e8f0; box-shadow:0 12px 32px rgba(0,0,0,0.05); margin-bottom:24px; position:relative;">
+          <img src="https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg" alt="Flag of India" style="width:40px; border-radius:4px; display:block;">
+        </div>
+        
+        <h2 style="font-size:clamp(32px, 5vw, 48px); font-weight:800; color:#0f172a; margin:0 0 20px; letter-spacing:-1px;">
+          Proudly Built in <span style="background:linear-gradient(90deg, #FF9933, #138808); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">India</span>
+        </h2>
+        
+        <p style="font-size:18px; color:#475569; max-width:680px; margin:0 auto 40px; line-height:1.7;">
+          NovaPay is engineered entirely in India, dedicated to empowering Indian developers and businesses with zero-fee, robust UPI payment infrastructure.
+        </p>
+
+        <div style="display:flex; justify-content:center; gap:32px; flex-wrap:wrap;">
+          <div style="text-align:center;">
+            <div style="font-size:32px; font-weight:800; color:#0f172a; margin-bottom:4px;">100%</div>
+            <div style="font-size:14px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:1px;">Free UPI Gateway</div>
+          </div>
+          <div style="width:1px; background:#e2e8f0; align-self:stretch;"></div>
+          <div style="text-align:center;">
+            <div style="font-size:32px; font-weight:800; color:#0f172a; margin-bottom:4px;">Zero</div>
+            <div style="font-size:14px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:1px;">Hidden Charges</div>
+          </div>
+          <div style="width:1px; background:#e2e8f0; align-self:stretch;"></div>
+          <div style="text-align:center;">
+            <div style="font-size:32px; font-weight:800; color:#0f172a; margin-bottom:4px;">Secure</div>
+            <div style="font-size:14px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:1px;">Data Privacy</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Grid -->
+    <section class="section section-dark" style="padding:100px 0;">
+      <div class="shell">
+        <div style="text-align:center; max-width:600px; margin:0 auto 60px;">
+          <div class="kicker" style="margin-bottom:12px; display:inline-block;">Why NovaPay?</div>
+          <h2 style="font-size:clamp(32px, 5vw, 48px); margin-bottom:20px; letter-spacing:-1px;">Built for scale, designed for speed.</h2>
+          <p class="section-intro" style="font-size:18px; line-height:1.6; margin:0 auto;">Everything you need to automate UPI / Paytm payments, without the headache of banking APIs, KYC, or monthly fees.</p>
+        </div>
+        
+        <div class="anim-stagger" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:32px;">
+          <!-- Feature 1 -->
+          <div style="background:var(--ink-2); padding:32px; border-radius:24px; border:1px solid rgba(255,255,255,.1); transition: transform 0.3s;" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform=''">
+            <div style="width:48px; height:48px; background:rgba(59,130,246,0.15); color:#60a5fa; border-radius:12px; display:flex; align-items:center; justify-content:center; margin-bottom:24px;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            </div>
+            <h3 style="font-size:20px; color:var(--white); margin-bottom:12px; font-weight:700;">Zero KYC & GST</h3>
+            <p style="color:#afc0b4; line-height:1.6; font-size:15px; margin:0;">Start accepting payments instantly. No paperwork, no business registration, and no tax hurdles for freelancers.</p>
+          </div>
+          
+          <!-- Feature 2 -->
+          <div style="background:var(--ink-2); padding:32px; border-radius:24px; border:1px solid rgba(255,255,255,.1); transition: transform 0.3s;" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform=''">
+            <div style="width:48px; height:48px; background:rgba(34,197,94,0.15); color:#4ade80; border-radius:12px; display:flex; align-items:center; justify-content:center; margin-bottom:24px;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+            </div>
+            <h3 style="font-size:20px; color:var(--white); margin-bottom:12px; font-weight:700;">Direct Settlements</h3>
+            <p style="color:#afc0b4; line-height:1.6; font-size:15px; margin:0;">Money doesn't pass through our servers. It goes straight to your personal UPI ID instantly and securely.</p>
+          </div>
+          
+          <!-- Feature 3 -->
+          <div style="background:var(--ink-2); padding:32px; border-radius:24px; border:1px solid rgba(255,255,255,.1); transition: transform 0.3s;" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform=''">
+            <div style="width:48px; height:48px; background:rgba(244,63,94,0.15); color:#fb7185; border-radius:12px; display:flex; align-items:center; justify-content:center; margin-bottom:24px;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            </div>
+            <h3 style="font-size:20px; color:var(--white); margin-bottom:12px; font-weight:700;">100% Free Forever</h3>
+            <p style="color:#afc0b4; line-height:1.6; font-size:15px; margin:0;">We don't charge any transaction fees or monthly subscriptions. Keep 100% of your hard-earned revenue.</p>
+          </div>
+          
+          <!-- Feature 4 -->
+          <div style="background:var(--ink-2); padding:32px; border-radius:24px; border:1px solid rgba(255,255,255,.1); transition: transform 0.3s;" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform=''">
+            <div style="width:48px; height:48px; background:rgba(168,85,247,0.15); color:#c084fc; border-radius:12px; display:flex; align-items:center; justify-content:center; margin-bottom:24px;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+            </div>
+            <h3 style="font-size:20px; color:var(--white); margin-bottom:12px; font-weight:700;">Instant Webhooks</h3>
+            <p style="color:#afc0b4; line-height:1.6; font-size:15px; margin:0;">Receive real-time HTTP callbacks on your server the moment a payment is verified. Automate digital delivery flawlessly.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Live System Status Section -->
+    <section id="status" class="section section-dark" style="padding:80px 0; border-top:1px solid rgba(255,255,255,0.05); border-bottom:1px solid rgba(255,255,255,0.05);">
+      <div class="shell">
+        <div class="anim-fade-up" style="background:linear-gradient(135deg, var(--ink-2), rgba(15,23,42,0.85)); border-radius:24px; padding:48px 40px; border:1px solid rgba(255,255,255,0.08); display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:32px; box-shadow:0 20px 40px rgba(0,0,0,0.25);">
+          
+          <div style="flex:1 1 450px;">
+            <div style="display:inline-flex; align-items:center; gap:8px; background:rgba(74,222,128,0.1); color:#4ade80; border-radius:99px; padding:6px 14px; font-size:12px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; margin-bottom:16px; border:1px solid rgba(74,222,128,0.2);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+              100% Transparency
+            </div>
+            <h2 style="font-size:clamp(28px, 4vw, 38px); margin-bottom:12px; letter-spacing:-1px; color:#fff; font-weight:800;">Live System Status</h2>
+            <p style="font-size:15px; color:#94a3b8; margin:0 0 24px; line-height:1.6; max-width:540px;">We believe in absolute transparency. Monitor our API, SMTP parsers, and website uptime in real-time on our dedicated public status page backed by independent monitoring.</p>
+            <div>
+              <a href="#" style="display:inline-flex; align-items:center; gap:10px; background:#2563eb; color:#fff; padding:14px 28px; border-radius:12px; font-weight:700; font-size:15px; text-decoration:none; box-shadow:0 10px 25px rgba(37,99,235,0.3); transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 14px 30px rgba(37,99,235,0.4)'" onmouseout="this.style.transform='';this.style.boxShadow='0 10px 25px rgba(37,99,235,0.3)'">
+                View Detailed Status →
+              </a>
+            </div>
+          </div>
+          
+          <div style="flex:1 1 300px; display:flex; flex-direction:column; gap:12px;">
+            <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:16px 20px; display:flex; align-items:center; justify-content:space-between;">
+              <span style="color:#e2e8f0; font-weight:600; font-size:14px;">API Endpoint Gateway</span>
+              <span style="color:#4ade80; font-weight:700; font-size:13px; display:flex; align-items:center; gap:6px;"><span style="width:8px; height:8px; background:#4ade80; border-radius:50%; display:inline-block;"></span> Operational</span>
+            </div>
+            <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:16px 20px; display:flex; align-items:center; justify-content:space-between;">
+              <span style="color:#e2e8f0; font-weight:600; font-size:14px;">IMAP Receipt Parser</span>
+              <span style="color:#4ade80; font-weight:700; font-size:13px; display:flex; align-items:center; gap:6px;"><span style="width:8px; height:8px; background:#4ade80; border-radius:50%; display:inline-block;"></span> Operational</span>
+            </div>
+            <div style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:16px 20px; display:flex; align-items:center; justify-content:space-between;">
+              <span style="color:#e2e8f0; font-weight:600; font-size:14px;">Historical Uptime SLA</span>
+              <span style="color:#60a5fa; font-weight:800; font-size:14px;">99.98%</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- Verified WhatsApp Support Section -->
+    <section style="background:#fff; padding:80px 0; border-bottom:1px solid #e2e8f0; text-align:center;">
+      <div class="shell anim-fade-up">
+        <div style="display:inline-flex; align-items:center; justify-content:center; width:64px; height:64px; background:#25d366; color:#fff; border-radius:50%; margin-bottom:24px; box-shadow:0 12px 24px rgba(37,211,102,0.25);">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+        </div>
+        <div class="kicker" style="color:#16a34a; font-weight:700; text-transform:uppercase; letter-spacing:1px; font-size:13px; margin-bottom:12px;">Verified Developer Support</div>
+        <h2 style="font-size:clamp(30px, 4vw, 42px); color:#0f172a; margin:0 0 16px; letter-spacing:-1px; font-weight:800;">24/7 WhatsApp Support for API Integration</h2>
+        <p style="font-size:16px; color:#64748b; max-width:600px; margin:0 auto 32px; line-height:1.7;">Building a payment flow can be tricky. That's why we offer direct WhatsApp support to help you integrate the UPI / Paytm UPI Gateway flawlessly. Get instant help from real developers.</p>
+        
+        <div style="display:flex; justify-content:center; gap:24px; flex-wrap:wrap; margin-bottom:36px;">
+          <div style="background:#fff; padding:16px 24px; border-radius:16px; border:1px solid #e2e8f0; display:flex; align-items:center; gap:12px; box-shadow:0 4px 12px rgba(0,0,0,0.03);">
+            <div style="background:#dcfce7; color:#16a34a; width:40px; height:40px; border-radius:10px; display:grid; place-items:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div>
+            <div style="text-align:left;">
+              <b style="display:block; font-size:14px; color:#0f172a;">Instant Setup Help</b>
+              <span style="font-size:12px; color:#64748b;">Resolve API errors fast</span>
+            </div>
+          </div>
+          <div style="background:#fff; padding:16px 24px; border-radius:16px; border:1px solid #e2e8f0; display:flex; align-items:center; gap:12px; box-shadow:0 4px 12px rgba(0,0,0,0.03);">
+            <div style="background:#eff6ff; color:#2563eb; width:40px; height:40px; border-radius:10px; display:grid; place-items:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>
+            <div style="text-align:left;">
+              <b style="display:block; font-size:14px; color:#0f172a;">Live Status Tracking</b>
+              <span style="font-size:12px; color:#64748b;">Help with Webhooks & Polling</span>
+            </div>
+          </div>
+        </div>
+
+        <a href="https://wa.me/917055357207" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:10px; background:#25d366; color:#fff; padding:16px 36px; border-radius:12px; font-weight:700; font-size:15px; text-decoration:none; box-shadow:0 10px 28px rgba(37,211,102,0.3); transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 14px 32px rgba(37,211,102,0.4)'" onmouseout="this.style.transform='';this.style.boxShadow='0 10px 28px rgba(37,211,102,0.3)'">
+          Chat with Support Team →
+        </a>
+      </div>
+    </section>
+
+    <!-- Meet the Founder Section -->
+    <section style="background:#f8fafc; padding:80px 0; border-bottom:1px solid #e2e8f0; position:relative; overflow:hidden;">
+      <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); width:800px; height:800px; background:radial-gradient(circle, rgba(37,99,235,0.05) 0%, transparent 60%); pointer-events:none;"></div>
+      <div class="shell anim-fade-up" style="position:relative; z-index:1; max-width:900px; margin:0 auto;">
+        <div style="background:#fff; border-radius:24px; padding:48px; display:flex; align-items:center; gap:48px; border:1px solid rgba(226,232,240,0.8); box-shadow:0 20px 40px rgba(15,23,42,0.04); flex-wrap:wrap;">
+          
+          <div style="position:relative; flex-shrink:0; margin:0 auto;">
+            <div style="position:absolute; inset:-8px; border-radius:50%; background:linear-gradient(135deg, #3b82f6, #8b5cf6); opacity:0.2; filter:blur(12px);"></div>
+            <img src="{{ url_for('static', filename='img/avatar.jpg') }}" alt="NovaPay Team (NovaPay Devs)" style="position:relative; width:160px; height:160px; border-radius:50%; object-fit:cover; border:4px solid #fff; box-shadow:0 12px 32px rgba(15,23,42,0.12);">
+            <div style="position:absolute; bottom:8px; right:8px; width:28px; height:28px; background:#10b981; border:4px solid #fff; border-radius:50%; box-shadow:0 4px 12px rgba(16,185,129,0.3); z-index:2;"></div>
+          </div>
+          
+          <div style="flex:1 1 300px; text-align:left;">
+            <div class="kicker" style="display:inline-flex; align-items:center; gap:8px; color:#2563eb; font-weight:700; text-transform:uppercase; letter-spacing:1px; font-size:12px; margin-bottom:16px; background:rgba(37,99,235,0.08); padding:6px 12px; border-radius:99px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+              Verified Official Developer
+            </div>
+            <h2 style="font-size:clamp(28px, 4vw, 36px); color:#0f172a; margin:0 0 12px; letter-spacing:-1px; font-weight:800;">NovaPay Team <span style="color:#64748b; font-weight:500;">(NovaPay Devs)</span></h2>
+            <p style="font-size:16px; color:#475569; margin:0 0 24px; line-height:1.7;">NovaPay is exclusively built, maintained, and operated by NovaPay Team, widely known as <strong>NovaPay Devs</strong>. By providing a 100% free API infrastructure, NovaPay Devs empowers developers to automate their UPI flows flawlessly.</p>
+            <div style="display:flex; gap:16px; flex-wrap:wrap;">
+              <a href="blog/who-is-the-official-developer-of-novapay.php" style="display:inline-flex; align-items:center; gap:8px; background:#0f172a; color:#fff; padding:14px 28px; border-radius:12px; font-weight:700; font-size:14px; text-decoration:none; box-shadow:0 8px 20px rgba(15,23,42,0.2); transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 12px 24px rgba(15,23,42,0.3)'" onmouseout="this.style.transform='';this.style.boxShadow='0 8px 20px rgba(15,23,42,0.2)'">Read the Full Story →</a>
+              <a href="https://wa.me/917055357207" target="_blank" rel="noopener noreferrer" style="display:inline-flex; align-items:center; gap:8px; background:rgba(15,23,42,0.05); color:#0f172a; padding:14px 28px; border-radius:12px; font-weight:700; font-size:14px; text-decoration:none; transition: background 0.2s;" onmouseover="this.style.background='rgba(15,23,42,0.08)'" onmouseout="this.style.background='rgba(15,23,42,0.05)'">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                Contact Directly
+              </a>
+            </div>
+          </div>
+          
+        </div>
+      </div>
+    </section>
+
+    <!-- Sleek Unified Dark B2B CTA Section -->
+    <section style="background: linear-gradient(135deg, #0b1120 0%, #0f172a 50%, #1e293b 100%); padding:100px 0; border-top:1px solid rgba(255,255,255,0.08); position:relative; overflow:hidden;">
+      <div style="position:absolute; top:-30%; left:50%; transform:translateX(-50%); width:700px; height:700px; background:radial-gradient(circle, rgba(37,99,235,0.12) 0%, transparent 70%); pointer-events:none;"></div>
+      <div class="shell" style="display:flex; flex-wrap:wrap; align-items:center; gap:60px; justify-content:space-between; position:relative; z-index:1;">
+        <div class="anim-slide-left" style="flex:1 1 400px; min-width:300px;">
+          <div style="display:inline-flex; align-items:center; gap:8px; background:rgba(37,99,235,0.15); border:1px solid rgba(37,99,235,0.3); border-radius:999px; padding:7px 16px; font-size:12px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:#60a5fa; margin-bottom:24px;">
+            <svg style="width:13px;height:13px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+            </svg> Get started in minutes
+          </div>
+          <h2 style="color:#ffffff; font-size:clamp(36px, 5vw, 56px); letter-spacing:-2px; margin:0 0 20px; line-height:1.1; font-weight:800;">Ready to accept <br>UPI payments?</h2>
+          <p style="color:#94a3b8; font-size:16px; max-width:440px; margin:0 0 36px; line-height:1.7;">Create an account, generate an API key, and make your first payment link in minutes. No complex banking integration or KYC needed.</p>
+          <div style="display:flex; gap:14px; flex-wrap:wrap;">
+            <a href="/register" style="display:inline-flex; align-items:center; gap:8px; background:#2563eb; color:#fff; padding:16px 36px; border-radius:12px; font-weight:700; font-size:15px; text-decoration:none; box-shadow:0 10px 28px rgba(37,99,235,0.35); transition: transform 0.2s ease, box-shadow 0.2s ease;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 14px 32px rgba(37,99,235,0.45)'" onmouseout="this.style.transform='';this.style.boxShadow='0 10px 28px rgba(37,99,235,0.35)'">Get your API key →</a>
+            <a href="/api_docs" style="display:inline-flex; align-items:center; gap:8px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); color:#e2e8f0; padding:16px 28px; border-radius:12px; font-weight:700; font-size:15px; text-decoration:none; transition: background 0.2s ease;" onmouseover="this.style.background='rgba(255,255,255,0.14)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">Read docs</a>
+          </div>
+          <div style="display:flex; gap:20px; margin-top:32px; flex-wrap:wrap;">
+            <span style="display:flex; align-items:center; gap:7px; font-size:13px; font-weight:600; color:#4ade80;">✓ 100% Free Forever</span>
+            <span style="display:flex; align-items:center; gap:7px; font-size:13px; font-weight:600; color:#4ade80;">✓ 0% Transaction Fees</span>
+            <span style="display:flex; align-items:center; gap:7px; font-size:13px; font-weight:600; color:#4ade80;">✓ Unlimited API Calls</span>
+          </div>
+        </div>
+        <div class="cta-closing-metrics anim-stagger" style="flex:1 1 450px; display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px;">
+          <div style="background:rgba(15,23,42,0.6); backdrop-filter:blur(12px); border-radius:20px; padding:28px 24px; border:1px solid rgba(255,255,255,0.08); transition: transform 0.3s ease;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''">
+            <div class="cta-counter" data-target="2" style="font-size:38px; font-weight:800; letter-spacing:-1.5px; color:#ffffff;">0</div>
+            <div style="font-size:13px; font-weight:600; color:#94a3b8; margin-top:8px; line-height:1.4;">API calls to complete a payment</div>
+          </div>
+          <div style="background:rgba(15,23,42,0.6); backdrop-filter:blur(12px); border-radius:20px; padding:28px 24px; border:1px solid rgba(255,255,255,0.08); transition: transform 0.3s ease;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''">
+            <div class="cta-counter" data-target="99" data-suffix="%" style="font-size:38px; font-weight:800; letter-spacing:-1.5px; color:#ffffff;">0%</div>
+            <div style="font-size:13px; font-weight:600; color:#94a3b8; margin-top:8px; line-height:1.4;">Uptime across all endpoints</div>
+          </div>
+          <div style="background:rgba(15,23,42,0.6); backdrop-filter:blur(12px); border-radius:20px; padding:28px 24px; border:1px solid rgba(255,255,255,0.08); transition: transform 0.3s ease;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''">
+            <div style="font-size:38px; font-weight:800; letter-spacing:-1.5px; color:#38bdf8;">&lt;5s</div>
+            <div style="font-size:13px; font-weight:600; color:#94a3b8; margin-top:8px; line-height:1.4;">Average payment confirmation</div>
+          </div>
+          <div style="background:rgba(37,99,235,0.15); border-radius:20px; padding:28px 24px; border:1px solid rgba(37,99,235,0.3); transition: transform 0.3s ease;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''">
+            <div style="font-size:38px; font-weight:800; letter-spacing:-1.5px; color:#60a5fa;">UPI</div>
+            <div style="font-size:13px; font-weight:600; color:#cbd5e1; margin-top:8px; line-height:1.4;">UPI / Paytm powered payments</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+  <footer style="background:#0b1120; color:#94a3b8; padding:64px 0 32px; font-size:14px; border-top:1px solid rgba(255,255,255,0.08);">
+    <div class="shell">
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:40px; margin-bottom:40px;">
+        <!-- Brand Info -->
+        <div style="max-width:360px;">
+          <a class="brand" href="/" style="padding:0; margin-bottom:16px; display:inline-block;"><span style="font-weight: 800; font-size: 24px; color: white; letter-spacing: -0.5px;">NovaPay</span></a>
+          <p style="margin:0 0 18px; line-height:1.6; font-size:14px; color:#94a3b8;">Automated UPI Payment verification gateway for developers accepting UPI / Paytm with zero transaction fees.</p>
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <a href="#" style="display:inline-flex; align-items:center; gap:8px; background:rgba(74,222,128,0.08); border:1px solid rgba(74,222,128,0.2); padding:6px 14px; border-radius:99px; font-size:12px; color:#4ade80; font-weight:600; text-decoration:none; transition:all 0.2s;" onmouseover="this.style.background='rgba(74,222,128,0.14)'; this.style.borderColor='#4ade80';" onmouseout="this.style.background='rgba(74,222,128,0.08)'; this.style.borderColor='rgba(74,222,128,0.2)';">
+              <span style="width:7px; height:7px; background:#4ade80; border-radius:50%; display:inline-block; box-shadow:0 0 8px #4ade80;"></span> All Systems Operational
+            </a>
+            <button id="indexGooglePreferredBtn" type="button" style="display:inline-flex; align-items:center; gap:7px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); padding:6px 14px; border-radius:99px; font-size:12px; color:#e2e8f0; font-weight:600; cursor:pointer; font-family:inherit; transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.12)'; this.style.borderColor='rgba(96,165,250,0.4)';" onmouseout="this.style.background='rgba(255,255,255,0.06)'; this.style.borderColor='rgba(255,255,255,0.12)';">
+              <svg viewBox="0 0 24 24" width="14" height="14" style="display:block; flex-shrink:0;">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+              </svg>
+              <span>Add to Preferred Sources</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Resources -->
+        <div>
+          <h3 style="color:#fff; font-size:16px; margin:0 0 20px; font-weight:700; letter-spacing:-0.2px;">Resources</h3>
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <a href="/api_docs" style="color:#94a3b8; text-decoration:none; transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">API Documentation</a>
+            <a href="blog/how-it-works.php" style="color:#94a3b8; text-decoration:none; transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">Architecture & Webhooks</a>
+            <a href="blog/preventing-double-payments.php" style="color:#94a3b8; text-decoration:none; transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">Handling Collisions</a>
+            <a href="blog/how-novapay-prevents-fake-upi-payments-and-email-spoofing.php" style="color:#94a3b8; text-decoration:none; transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">Security & Anti-Fraud</a>
+          </div>
+        </div>
+
+        <!-- Ecosystem -->
+        <div>
+          <h3 style="color:#fff; font-size:16px; margin:0 0 20px; font-weight:700; letter-spacing:-0.2px;">Ecosystem</h3>
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <a href="https://KaranBhaiyahost.in/" target="_blank" rel="noopener noreferrer" style="color:#94a3b8; text-decoration:none; transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">NovaPay Devs Host (Web Hosting)</a>
+            <a href="https://github.com/KaranBhaiya" target="_blank" rel="noopener noreferrer" style="color:#94a3b8; text-decoration:none; transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">GitHub Open Source</a>
+          </div>
+        </div>
+
+        <!-- Legal & Blog -->
+        <div>
+          <h3 style="color:#fff; font-size:16px; margin:0 0 20px; font-weight:700; letter-spacing:-0.2px;">Legal & Blog</h3>
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <a href="blog/index.php" style="color:#60a5fa; text-decoration:none; transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#60a5fa'">Blog Hub</a>
+            <a href="terms.php" style="color:#94a3b8; text-decoration:none; transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">Terms of Service</a>
+            <a href="blog/is-novapay-safe-privacy-and-legal-policy.php" style="color:#94a3b8; text-decoration:none; transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">Privacy Policy</a>
+            <a href="blog/beware-of-fake-novapay-scams-online.php" style="color:#ef4444; text-decoration:none; font-weight:500;">Scam Warning</a>
+          </div>
+        </div>
+
+        <!-- Support & Socials -->
+        <div>
+          <h3 style="color:#fff; font-size:16px; margin:0 0 20px; font-weight:700; letter-spacing:-0.2px;">Contact & Community</h3>
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <a href="https://wa.me/917055357207" target="_blank" rel="noopener noreferrer" style="color:#4ade80; text-decoration:none; font-weight:600;">WhatsApp Support</a>
+            <a href="https://t.me/KaranBhaiya_related" target="_blank" rel="noopener noreferrer" style="color:#60a5fa; text-decoration:none; font-weight:600;">Telegram (3k+ Devs)</a>
+            <a href="https://www.youtube.com/@KaranBhaiya" target="_blank" rel="noopener noreferrer" style="color:#ff4b4b; text-decoration:none; font-weight:600;">YouTube (1.39k+ Devs)</a>
+            <div style="display:flex; gap:12px; margin-top:8px;">
+              <a href="http://www.linkedin.com/in/KaranBhaiya" target="_blank" aria-label="LinkedIn" style="display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:10px; background:rgba(255,255,255,0.06); color:#94a3b8; border:1px solid rgba(255,255,255,0.1); transition: all 0.2s;" onmouseover="this.style.color='#fff'; this.style.background='rgba(255,255,255,0.12)';" onmouseout="this.style.color='#94a3b8'; this.style.background='rgba(255,255,255,0.06)';"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg></a>
+              <a href="https://x.com/KaranBhaiya" target="_blank" aria-label="X/Twitter" style="display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:10px; background:rgba(255,255,255,0.06); color:#94a3b8; border:1px solid rgba(255,255,255,0.1); transition: all 0.2s;" onmouseover="this.style.color='#fff'; this.style.background='rgba(255,255,255,0.12)';" onmouseout="this.style.color='#94a3b8'; this.style.background='rgba(255,255,255,0.06)';"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l11.733 16h4.267l-11.733 -16z" /><path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772" /></svg></a>
+              <a href="https://www.instagram.com/KaranBhaiya/" target="_blank" aria-label="Instagram" style="display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:10px; background:rgba(255,255,255,0.06); color:#94a3b8; border:1px solid rgba(255,255,255,0.1); transition: all 0.2s;" onmouseover="this.style.color='#fff'; this.style.background='rgba(255,255,255,0.12)';" onmouseout="this.style.color='#94a3b8'; this.style.background='rgba(255,255,255,0.06)';"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg></a>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div style="border-top:1px solid rgba(255,255,255,0.08); padding-top:24px; margin-top:24px; font-size:13px; color:#64748b; line-height:1.6;">
+        <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:16px; margin-bottom:12px;">
+          <p style="margin:0;">&copy; 2026 NovaPay. Built with ❤️ by <a href="https://KaranBhaiyahost.in/" target="_blank" style="color:#60a5fa; text-decoration:none; font-weight:600;">NovaPay Team (NovaPay Devs)</a>. All rights reserved.</p>
+          
+          <span class="fampay-wordmark"><i class="fa-solid fa-wallet" style="margin-right: 6px;"></i>UPI / Paytm</span>
+        </div>
+        <p style="margin:0; max-width:800px; color:#94a3b8;">NovaPay is proudly owned and operated by <strong>Karan Bhaiya</strong>.</p>
+      </div>
+    </div>
+  </footer>
+  <script>
+    function toggleMobileNav() {
+      document.getElementById('mobile-nav').classList.toggle('open');
+      document.getElementById('mobile-overlay').classList.toggle('open')
+    }
+
+    function closeMobileNav() {
+      document.getElementById('mobile-nav').classList.remove('open');
+      document.getElementById('mobile-overlay').classList.remove('open')
+    }
+    document.querySelectorAll('#mobile-nav a').forEach(a => a.addEventListener('click', closeMobileNav));
+  </script>
+  <a href="#" class="back-to-top" aria-label="Back to top" onclick="window.scrollTo({top:0,behavior:'smooth'}); return false;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 19V5M5 12l7-7 7 7" />
+    </svg></a>
+  <script>
+    // Sticky Navbar and Back-to-top button
+    window.addEventListener('scroll', function() {
+      var nav = document.querySelector('.nav');
+      if (window.scrollY > 50) nav.classList.add('nav-sticky');
+      else nav.classList.remove('nav-sticky');
+
+      var btn = document.querySelector('.back-to-top');
+      if (window.scrollY > 400) btn.classList.add('visible');
+      else btn.classList.remove('visible');
+    });
+
+    // Scroll animations via IntersectionObserver
+    (function() {
+      var targets = document.querySelectorAll(
+        '.anim-fade-up, .anim-fade-in, .anim-slide-left, .anim-slide-right, .anim-stagger'
+      );
+      if (!targets.length || !window.IntersectionObserver) {
+        targets.forEach(function(el) { el.style.opacity = '1'; });
+        return;
+      }
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.12 });
+      targets.forEach(function(el) { observer.observe(el); });
+    })();
+
+    // Counter animation — counts up when scrolled into view
+    (function() {
+      function animateCounter(el) {
+        var target = parseInt(el.getAttribute('data-target'), 10);
+        var suffix = el.getAttribute('data-suffix') || '';
+        var duration = 1200;
+        var start = null;
+        function step(timestamp) {
+          if (!start) start = timestamp;
+          var progress = Math.min((timestamp - start) / duration, 1);
+          var eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+          el.textContent = Math.floor(eased * target) + suffix;
+          if (progress < 1) requestAnimationFrame(step);
+          else el.textContent = target + suffix;
+        }
+        requestAnimationFrame(step);
+      }
+      if (!window.IntersectionObserver) return;
+      var counterObserver = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) {
+            animateCounter(entry.target);
+            counterObserver.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.5 });
+      document.querySelectorAll('.cta-counter').forEach(function(el) {
+        counterObserver.observe(el);
+      });
+    })();
+
+    // Google Preferred Sources listener
+    (function() {
+      var btn = document.getElementById('indexGooglePreferredBtn');
+      if (btn) {
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          (self.PREFERRED_SOURCE = self.PREFERRED_SOURCE || []).push(function(preferredSource) {
+            preferredSource.init({ theme: 'dark', lang: 'en' });
+            preferredSource.addPreferredSource();
+          });
+        });
+      }
+    })();
+  </script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"436e5c3cf8934ae9b0b62912ad5c03c9","r":1,"spa":2}' crossorigin="anonymous"></script>
+<script>window.__CF$cv$params={r:'a38bfdcbb866feac',t:'MTc4OTAxNzcwOQ==',u:'01a089c3de3877a183f74fd3f1c67cdf',ut:'sPts9fB7JzFJ6_F0.T13AAphWmHi0kkJvb8HCdWywLE-1789017710-1.2.1.1-6NshUKQ5YS.AZtiMfWP63_JHqKMgEemBeOJbrQXqRTmXeCyjwp2iAJ3naYgcYNP0vFTiLMbt8QhxxsfqGux1FfRX2qAwwk9RbvgFG.ZNqpY',i:60};(function(){if(!document.body)return;var s=document.createElement('script');s.src='/cdn-cgi/challenge-platform/scripts/precursor/main.js';document.head.appendChild(s);})();</script>
+</body>
+</html>

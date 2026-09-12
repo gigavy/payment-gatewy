@@ -1,0 +1,181 @@
+﻿{% extends 'base.html' %}
+
+{% block content %}
+<div class="mb-8">
+    <div class="flex justify-between items-end">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800">Payment Links</h1>
+            <p class="text-sm font-medium text-slate-500 mt-1">Create and manage checkout URLs to share with your customers.</p>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 gap-8 mb-8">
+    
+    <!-- Generate Payment Link -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="p-6 border-b border-slate-100">
+            <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-link text-primary"></i> Generate Payment Link
+            </h3>
+            <p class="text-sm font-medium text-slate-500 mt-1">Create an instant checkout link with auto-generated ID to share with your customers.</p>
+        </div>
+        
+        <div class="p-6">
+            {% if not user_info or not user_info.upi_id %}
+                <div class="bg-amber-50 rounded-xl p-8 text-center border border-amber-100">
+                    <div class="inline-flex items-center justify-center mb-3">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-500 text-3xl"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-amber-800 mb-2">Payment Gateway Not Configured</h4>
+                    <p class="text-sm text-amber-700 mb-6">Please configure your FamPay or Paytm IMAP settings to start creating payment links.</p>
+                    <a href="/settings" class="inline-block bg-primary hover:bg-indigo-700 text-white font-bold py-2.5 px-6 rounded-lg transition-colors">
+                        Configure Now
+                    </a>
+                </div>
+            {% else %}
+                <form action="/generate_link" method="POST" class="max-w-md">
+                    <div class="space-y-5">
+                        <div>
+                            <div class="relative">
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400">₹</span>
+                                <input type="number" name="amount" required min="1" step="0.01" placeholder="Amount (e.g. 499)" class="w-full pl-8 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-sm font-bold text-slate-800 shadow-sm">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div class="relative">
+                                <select name="expiry" class="w-full pl-4 pr-10 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-sm font-bold text-slate-800 shadow-sm appearance-none cursor-pointer">
+                                    <option value="1">1 Min</option>
+                                    <option value="5">5 Mins</option>
+                                    <option value="30">30 Mins</option>
+                                    <option value="60">1 Hour</option>
+                                    <option value="120">2 Hours</option>
+                                    <option value="1440" selected>1 Day</option>
+                                </select>
+                                <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div class="relative">
+                                <i class="fa-regular fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                <input type="email" name="customer_email" placeholder="Customer Email (Optional)" class="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-sm font-medium text-slate-800 shadow-sm">
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm">
+                            <i class="fa-solid fa-bolt text-xs"></i>
+                            <span>Generate</span>
+                        </button>
+                    </div>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- My Payment Links -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="p-6 border-b border-slate-100">
+            <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-list-ul text-primary"></i> My Payment Links
+            </h3>
+            <p class="text-sm font-medium text-slate-500 mt-1">Manage your active and expired payment links.</p>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse min-w-[600px]">
+                <thead>
+                    <tr class="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-100">
+                        <th class="py-4 px-6">Link (Slug)</th>
+                        <th class="py-4 px-6">Amount</th>
+                        <th class="py-4 px-6">Status</th>
+                        <th class="py-4 px-6 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm font-medium text-slate-700">
+                    {% if links %}
+                        {% for link in links %}
+                        <tr class="border-b border-slate-50 hover:bg-slate-50/50 transition-colors group">
+                            <td class="py-4 px-6">
+                                <p class="font-bold text-slate-800">{{ link[0] }}</p>
+                                <p class="text-[11px] font-mono text-slate-500 bg-slate-100 inline-block px-1.5 py-0.5 rounded mt-1">/pay/{{ link[0] }}</p>
+                            </td>
+                            <td class="py-4 px-6 font-bold">₹{{ "%.2f"|format(link[1]) }}</td>
+                            <td class="py-4 px-6">
+                                {% if link[2] == 'completed' %}
+                                <span class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">
+                                    <i class="fa-solid fa-check"></i> Success
+                                </span>
+                                {% elif link[2] == 'pending' %}
+                                <span class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-bold bg-amber-50 text-amber-600 border border-amber-100">
+                                    <i class="fa-regular fa-clock"></i> Pending
+                                </span>
+                                {% else %}
+                                <span class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-bold bg-red-50 text-red-600 border border-red-100">
+                                    <i class="fa-solid fa-xmark"></i> Failed
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="py-4 px-6 text-right">
+                                <div class="flex items-center justify-end gap-2">
+                                    <button onclick="copyToClipboard('{{ request.host_url.rstrip('/') }}/pay/{{ link[0] }}')" class="px-3 py-1.5 rounded border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800 font-bold text-xs transition-colors flex items-center gap-1.5">
+                                        <i class="fa-regular fa-copy"></i> Copy
+                                    </button>
+                                    <button onclick="expireTxn('{{ link[0] }}')" class="px-3 py-1.5 rounded border border-amber-200 text-amber-600 hover:bg-amber-50 hover:text-amber-700 font-bold text-xs transition-colors flex items-center gap-1.5">
+                                        <i class="fa-regular fa-clock"></i> Expire
+                                    </button>
+                                    <button onclick="disableTxn('{{ link[0] }}')" class="px-3 py-1.5 rounded border border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 font-bold text-xs transition-colors flex items-center gap-1.5">
+                                        <i class="fa-solid fa-ban"></i> Disable
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="4" class="py-12 text-center">
+                                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-50 mb-4 border border-slate-100">
+                                    <i class="fa-solid fa-link-slash text-2xl text-slate-400"></i>
+                                </div>
+                                <h4 class="text-base font-bold text-slate-800 mb-1">No payment links generated yet</h4>
+                                <p class="text-sm text-slate-500 mb-4">Create your custom payment link above to get started</p>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text);
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: 'Link copied!',
+            showConfirmButton: false,
+            timer: 2000
+        });
+    }
+    
+    function expireTxn(txn_id) {
+        // Since we don't have a specific expire endpoint yet, we'll use cancel_txn
+        fetch('/api/cancel_txn', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ txn_id: txn_id })
+        }).then(res => res.json()).then(data => {
+            if(data.status === 'success') window.location.reload();
+        });
+    }
+    
+    function disableTxn(txn_id) {
+        expireTxn(txn_id);
+    }
+</script>
+{% endblock %}
+

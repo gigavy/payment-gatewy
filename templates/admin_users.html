@@ -1,0 +1,99 @@
+﻿{% extends 'admin_base.html' %}
+
+{% block content %}
+<div class="mb-8 flex items-center gap-3">
+    <div class="w-10 h-10 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center text-lg shadow-sm border border-purple-100">
+        <i class="fa-solid fa-users"></i>
+    </div>
+    <div>
+        <h1 class="text-2xl font-black text-slate-800">Manage Users</h1>
+        <p class="text-xs text-slate-500 mt-1">Control all merchants and users.</p>
+    </div>
+</div>
+
+<div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+        <div class="flex items-center gap-3">
+            <h3 class="text-base font-bold text-slate-800"><i class="fa-solid fa-address-book text-primary mr-2"></i> All Registered Accounts</h3>
+            <span class="bg-slate-100 text-slate-600 text-xs font-bold px-3 py-1 rounded-full">Total: {{ all_users|length }}</span>
+        </div>
+        
+        <div class="relative w-full sm:w-64">
+            <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+            <input type="text" id="userSearch" onkeyup="filterUsers()" class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="Search by name or email...">
+        </div>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="border-b border-slate-200 text-[10px] text-slate-500 uppercase tracking-wider">
+                    <th class="p-3 font-bold">User / Merchant</th>
+                    <th class="p-3 font-bold">Role</th>
+                    
+                    
+                    <th class="p-3 font-bold text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="text-sm text-slate-700">
+                {% for u in all_users %}
+                <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td class="p-3">
+                        <div class="font-bold text-slate-800">{{ u[2] if u[2] else 'No Name' }}</div>
+                        <div class="text-[11px] text-slate-500">{{ u[1] }}</div>
+                        <div class="text-[9px] text-slate-400 font-mono mt-1 px-1.5 py-0.5 bg-slate-100 rounded inline-block">{{ u[0] }}</div>
+                    </td>
+                    <td class="p-3">
+                        {% if u[5] == 'admin' %}
+                            <span class="bg-red-50 text-red-600 border border-red-100 text-[10px] font-bold px-2 py-0.5 rounded uppercase">Admin</span>
+                        {% else %}
+                            <span class="bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold px-2 py-0.5 rounded uppercase">Merchant</span>
+                        {% endif %}
+                    </td>
+                    <td class="p-3">
+                        <span class="bg-emerald-50 text-emerald-700 font-bold px-2.5 py-1 rounded-md border border-emerald-100 text-xs shadow-sm">{{ u[3] }}</span>
+                    </td>
+                    <td class="p-3">
+                        {% if u[4] %}
+                            <span class="text-xs font-medium text-slate-600"><i class="fa-regular fa-calendar mr-1"></i> {{ u[4][:10] }}</span>
+                        {% else %}
+                            <span class="text-xs text-slate-400 font-medium italic">Lifetime</span>
+                        {% endif %}
+                    </td>
+                    <td class="p-3 text-right flex items-center justify-end gap-2">
+                        
+                        <form action="/admin/revoke_api" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to revoke this users API Key? Their active integrations will break.');">
+                            <input type="hidden" name="target_user" value="{{ u[0] }}">
+                            <button type="submit" class="text-[10px] font-bold text-red-600 hover:text-white bg-red-50 hover:bg-red-600 px-2 py-1 rounded transition border border-red-200" title="Revoke API Key">
+                                <i class="fa-solid fa-ban"></i> API
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+
+
+<script>
+    function filterUsers() {
+        let input = document.getElementById("userSearch").value.toLowerCase();
+        let rows = document.querySelectorAll("tbody tr");
+        rows.forEach(row => {
+            let text = row.innerText.toLowerCase();
+            if (text.includes(input)) {
+                row.style.display = "";
+            } else {
+                row.style.display = "none";
+            }
+        });
+    }
+
+    
+</script>
+{% endblock %}
+

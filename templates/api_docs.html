@@ -1,0 +1,145 @@
+﻿{% extends 'base.html' %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-slate-800">API Documentation</h1>
+    <p class="text-sm font-medium text-slate-500 mt-1">Integrate our payment gateway into your own website or app.</p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    
+    <!-- Left Column: API Keys -->
+    <div class="lg:col-span-1 space-y-6">
+        <!-- API Key Card -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 relative overflow-hidden">
+            <div class="absolute right-0 top-0 w-24 h-24 bg-primary/5 rounded-bl-full -z-10"></div>
+            
+            <h3 class="text-base font-bold text-slate-800 flex items-center gap-2 mb-2">
+                <i class="fa-solid fa-key text-primary"></i> Secret API Key
+            </h3>
+            <p class="text-xs text-slate-500 mb-6">Use this key in the header to authenticate your API requests.</p>
+            
+            <div class="relative">
+                <input type="text" readonly value="{{ user_info.api_key if user_info and user_info.api_key else 'Please connect account to generate key' }}" id="apiKeyField" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono text-slate-700 pr-12 focus:outline-none">
+                <button onclick="copyApiKey()" class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-slate-400 hover:text-primary transition-colors rounded-lg hover:bg-indigo-50">
+                    <i class="fa-regular fa-copy"></i>
+                </button>
+            </div>
+            
+            <div class="mt-4 p-3 bg-red-50 rounded-lg border border-red-100 flex items-start gap-2">
+                <i class="fa-solid fa-triangle-exclamation text-red-500 mt-0.5"></i>
+                <p class="text-[11px] font-bold text-red-700">Keep this key secret. Do not share it publicly or expose it in client-side code (JS, React, etc).</p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+            <h3 class="text-base font-bold text-slate-800 mb-4">Base URL</h3>
+            <div class="p-3 bg-slate-800 rounded-lg text-emerald-400 font-mono text-xs">
+                {{ request.host_url.rstrip('/') }}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right Column: Docs -->
+    <div class="lg:col-span-2">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            
+            <!-- Create Order Tab -->
+            <div class="p-6 border-b border-slate-100">
+                <div class="flex items-center gap-3 mb-6">
+                    <span class="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-black rounded uppercase tracking-wider">POST</span>
+                    <h2 class="text-lg font-bold text-slate-800">/api/create-order</h2>
+                </div>
+                
+                <p class="text-sm text-slate-600 mb-6">Create a new payment checkout session and get the payment URL to redirect your customer.</p>
+                
+                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Request Headers</h4>
+                <div class="bg-slate-50 rounded-lg p-4 border border-slate-200 font-mono text-xs mb-6">
+                    <span class="text-slate-400">Content-Type:</span> <span class="text-slate-700">application/json</span><br>
+                    <span class="text-slate-400">X-Fam-Key:</span> <span class="text-primary">&lt;YOUR_SECRET_API_KEY&gt;</span>
+                </div>
+                
+                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Request Body (JSON)</h4>
+                <div class="bg-slate-900 rounded-lg p-4 font-mono text-xs text-blue-300 mb-6 overflow-x-auto">
+<pre>{
+  <span class="text-emerald-400">"amount"</span>: <span class="text-orange-400">499.00</span>, <span class="text-slate-500">// (Required) Float. Amount in INR</span>
+  <span class="text-emerald-400">"order_id"</span>: <span class="text-yellow-300">"ORDER_987654"</span>, <span class="text-slate-500">// (Optional) Your internal order ID</span>
+  <span class="text-emerald-400">"customer_name"</span>: <span class="text-yellow-300">"John Doe"</span>, <span class="text-slate-500">// (Optional) Customer Name</span>
+  <span class="text-emerald-400">"customer_email"</span>: <span class="text-yellow-300">"john@example.com"</span>, <span class="text-slate-500">// (Optional) Email for automated receipt</span>
+  <span class="text-emerald-400">"callback_url"</span>: <span class="text-yellow-300">"https://your-site.com/webhook"</span> <span class="text-slate-500">// (Optional) URL to receive webhooks</span>
+}</pre>
+                </div>
+
+                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Success Response</h4>
+                <div class="bg-slate-900 rounded-lg p-4 font-mono text-xs text-blue-300 mb-2 overflow-x-auto">
+<pre>{
+  <span class="text-emerald-400">"status"</span>: <span class="text-yellow-300">"success"</span>,
+  <span class="text-emerald-400">"payment_url"</span>: <span class="text-yellow-300">"{{ request.host_url.rstrip('/') }}/pay/FAM12345678"</span>,
+  <span class="text-emerald-400">"txn_id"</span>: <span class="text-yellow-300">"FAM12345678"</span>
+}</pre>
+                </div>
+                <p class="text-xs text-slate-500">Redirect your user to the `payment_url` to complete the transaction.</p>
+            </div>
+            
+            <!-- Webhook Documentation -->
+            <div class="p-6">
+                <div class="flex items-center gap-3 mb-6">
+                    <span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-black rounded uppercase tracking-wider">WEBHOOK</span>
+                    <h2 class="text-lg font-bold text-slate-800">Payment Callbacks</h2>
+                </div>
+                
+                <p class="text-sm text-slate-600 mb-6">When a payment is successfully completed, we will send a POST request to your `callback_url`.</p>
+                
+                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Webhook Payload</h4>
+                <div class="bg-slate-900 rounded-lg p-4 font-mono text-xs text-blue-300 mb-6 overflow-x-auto">
+<pre>{
+  <span class="text-emerald-400">"status"</span>: <span class="text-yellow-300">"success"</span>,
+  <span class="text-emerald-400">"txn_id"</span>: <span class="text-yellow-300">"FAM12345678"</span>,
+  <span class="text-emerald-400">"merchant_order_id"</span>: <span class="text-yellow-300">"ORDER_987654"</span>,
+  <span class="text-emerald-400">"amount"</span>: <span class="text-orange-400">499.00</span>,
+  <span class="text-emerald-400">"utr"</span>: <span class="text-yellow-300">"123456789012"</span>
+}</pre>
+                </div>
+                
+                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Security (HMAC Verification)</h4>
+                <p class="text-sm text-slate-600 mb-4">To verify that the webhook actually came from us, we send a header <code class="bg-slate-100 px-1 py-0.5 rounded text-primary text-xs">X-FamGateway-Signature</code>. Generate an HMAC-SHA256 signature of the raw JSON payload using your Secret API Key, and compare it with our header.</p>
+                
+                <div class="bg-slate-800 rounded-lg p-4 font-mono text-[11px] text-emerald-400 overflow-x-auto">
+<pre>
+<span class="text-slate-400"># Python Example</span>
+import hmac, hashlib
+signature = hmac.new(
+    api_key.encode(), 
+    raw_payload_body, 
+    hashlib.sha256
+).hexdigest()
+
+if signature == headers.get('X-FamGateway-Signature'):
+    print("Valid Webhook!")
+</pre>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    function copyApiKey() {
+        const input = document.getElementById('apiKeyField');
+        input.select();
+        document.execCommand('copy');
+        
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: 'API Key Copied!',
+            showConfirmButton: false,
+            timer: 2000
+        });
+    }
+</script>
+{% endblock %}
+

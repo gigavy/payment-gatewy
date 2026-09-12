@@ -1,0 +1,210 @@
+﻿{% extends 'admin_base.html' %}
+
+{% block content %}
+<div class="mb-8 flex items-center gap-3">
+    <div class="w-10 h-10 bg-red-50 text-red-500 rounded-full flex items-center justify-center text-lg shadow-sm border border-red-100">
+        <i class="fa-solid fa-shield-halved"></i>
+    </div>
+    <div>
+        <h1 class="text-2xl font-black text-slate-800">Admin Overview</h1>
+        <p class="text-xs text-slate-500 mt-1">Real-time gateway analytics, UPI processing stats and user accounts.</p>
+    </div>
+</div>
+
+<!-- Stats Grid -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-10">
+    <!-- Revenue -->
+    <div class="col-span-2 lg:col-span-1 bg-blue-600 rounded-2xl p-6 shadow-lg shadow-blue-500/30 text-white relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-10 -mt-10 blur-xl"></div>
+        <div class="flex items-center justify-between mb-4 relative z-10">
+            <span class="text-xs font-bold uppercase tracking-wider text-blue-100">Total Revenue</span>
+            <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                <i class="fa-solid fa-indian-rupee-sign text-sm"></i>
+            </div>
+        </div>
+        <div class="text-3xl font-black relative z-10">₹{{ "{:,.2f}".format(stats.total_revenue) }}</div>
+    </div>
+
+    <!-- Users -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+        <div class="flex items-center justify-between mb-4">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Total API Users</span>
+            <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center">
+                <i class="fa-solid fa-users text-sm"></i>
+            </div>
+        </div>
+        <div class="text-3xl font-black text-slate-800">{{ "{:,}".format(stats.total_users) }}</div>
+    </div>
+
+    <!-- Orders -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+        <div class="flex items-center justify-between mb-4">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Total Orders</span>
+            <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+                <i class="fa-solid fa-cart-shopping text-sm"></i>
+            </div>
+        </div>
+        <div class="text-3xl font-black text-slate-800">{{ "{:,}".format(stats.total_orders) }}</div>
+    </div>
+
+    <!-- Successful -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+        <div class="flex items-center justify-between mb-4">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Successful</span>
+            <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                <i class="fa-solid fa-check text-sm"></i>
+            </div>
+        </div>
+        <div class="text-3xl font-black text-slate-800">{{ "{:,}".format(stats.successful) }}</div>
+    </div>
+
+    <!-- Pending -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+        <div class="flex items-center justify-between mb-4">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Pending</span>
+            <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
+                <i class="fa-regular fa-clock text-sm"></i>
+            </div>
+        </div>
+        <div class="text-3xl font-black text-slate-800">{{ "{:,}".format(stats.pending) }}</div>
+    </div>
+
+    <!-- Failed/Expired -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+        <div class="flex items-center justify-between mb-4">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Failed / Expired</span>
+            <div class="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center">
+                <i class="fa-solid fa-xmark text-sm"></i>
+            </div>
+        </div>
+        <div class="text-3xl font-black text-slate-800">{{ "{:,}".format(stats.failed) }}</div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- User Management Table -->
+    <div class="lg:col-span-3 bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h3 class="text-base font-bold text-slate-800"><i class="fa-solid fa-users-gear text-primary mr-2"></i> User Accounts Management</h3>
+                <p class="text-xs text-slate-500 mt-1">Manage all registered merchants and their subscriptions.</p>
+            </div>
+            <button class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-4 py-2 rounded-lg transition">View All</button>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="border-b border-slate-200 text-[10px] text-slate-500 uppercase tracking-wider">
+                        <th class="p-3 font-bold">User / Merchant</th>
+                        <th class="p-3 font-bold">Role</th>
+                        <th class="p-3 font-bold">Current Plan</th>
+                        <th class="p-3 font-bold">Plan Expiry</th>
+                        <th class="p-3 font-bold text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm text-slate-700">
+                    {% for u in all_users %}
+                    <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                        <td class="p-3">
+                            <div class="font-bold text-slate-800">{{ u[2] if u[2] else 'No Name' }}</div>
+                            <div class="text-[11px] text-slate-500">{{ u[1] }}</div>
+                            <div class="text-[9px] text-slate-400 font-mono mt-1 px-1.5 py-0.5 bg-slate-100 rounded inline-block">{{ u[0] }}</div>
+                        </td>
+                        <td class="p-3">
+                            {% if u[5] == 'admin' %}
+                                <span class="bg-red-50 text-red-600 border border-red-100 text-[10px] font-bold px-2 py-0.5 rounded uppercase">Admin</span>
+                            {% else %}
+                                <span class="bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold px-2 py-0.5 rounded uppercase">Merchant</span>
+                            {% endif %}
+                        </td>
+                        <td class="p-3">
+                            <span class="bg-emerald-50 text-emerald-700 font-bold px-2.5 py-1 rounded-md border border-emerald-100 text-xs shadow-sm">{{ u[3] }}</span>
+                        </td>
+                        <td class="p-3">
+                            {% if u[4] %}
+                                <span class="text-xs font-medium text-slate-600"><i class="fa-regular fa-calendar mr-1"></i> {{ u[4][:10] if u[4] else 'N/A' }}</span>
+                            {% else %}
+                                <span class="text-xs text-slate-400 font-medium italic">Lifetime</span>
+                            {% endif %}
+                        </td>
+                        <td class="p-3 text-right">
+                            <button onclick="openEditPlanModal('{{ u[0] }}', '{{ u[2] }}', '{{ u[3] }}')" class="text-xs font-bold text-primary hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition shadow-sm border border-indigo-100">
+                                <i class="fa-solid fa-pen-to-square"></i> Edit
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Plan Modal -->
+<div id="editPlanModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl">
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-800">Edit Subscription</h3>
+                <button onclick="closeEditPlanModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <p class="text-sm text-slate-500 mb-6">Manually upgrade or modify plan for <strong id="modalUserName" class="text-slate-800">User</strong></p>
+            
+            <form action="/admin/update_plan" method="POST">
+                <input type="hidden" name="target_user" id="modalUserId">
+                
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Select Plan</label>
+                    <select name="new_plan" id="modalPlanSelect" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary shadow-sm cursor-pointer">
+                        <option value="Free">Free</option>
+                        <option value="Micro">Micro (₹29)</option>
+                        <option value="Starter">Starter (₹79)</option>
+                        <option value="Basic">Basic (₹129)</option>
+                        <option value="Growth">Growth (₹179)</option>
+                        <option value="Pro">Pro (₹399)</option>
+                        <option value="Elite">Elite (₹599)</option>
+                    </select>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Validity (Days)</label>
+                    <input type="number" name="expiry_days" value="30" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary shadow-sm">
+                    <p class="text-[10px] text-slate-400 mt-1">Set to 0 for Lifetime access.</p>
+                </div>
+                
+                <button type="submit" class="w-full bg-primary hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl transition-colors shadow-sm text-sm">
+                    Save Changes
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openEditPlanModal(userId, userName, currentPlan) {
+        document.getElementById('modalUserId').value = userId;
+        document.getElementById('modalUserName').textContent = userName || 'User';
+        document.getElementById('modalPlanSelect').value = currentPlan || 'Free';
+        document.getElementById('editPlanModal').classList.remove('hidden');
+    }
+    
+    function closeEditPlanModal() {
+        document.getElementById('editPlanModal').classList.add('hidden');
+    }
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    if(urlParams.has("success")) {
+        Swal.fire({
+            icon: "success",
+            title: "Success",
+            text: urlParams.get("success"),
+            confirmButtonColor: "#4f46e5",
+            timer: 2000,
+            showConfirmButton: false
+        });
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+</script>
+{% endblock %}
+

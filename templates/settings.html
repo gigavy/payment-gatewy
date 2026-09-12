@@ -1,0 +1,170 @@
+﻿{% extends 'base.html' %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-bold text-slate-800">Account Settings</h1>
+    <p class="text-sm font-medium text-slate-500 mt-1">Manage your login credentials, brand profile, and checkout theme.</p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    
+    <!-- Credentials Form -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 mb-8">
+        <h3 class="text-base font-bold text-slate-800 mb-6">Login Credentials</h3>
+        <form action="/update_credentials" method="POST">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">Username</label>
+                    <input type="text" name="username" required value="{{ user_info.username if user_info else '' }}" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:bg-white outline-none transition-all text-sm font-medium text-slate-800">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">New Password (leave blank to keep current)</label>
+                    <input type="password" name="password" placeholder="Enter new password" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:bg-white outline-none transition-all text-sm font-medium text-slate-800">
+                </div>
+                <button type="submit" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-colors shadow-sm mt-2">
+                    Update Credentials
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Form -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+        <h3 class="text-base font-bold text-slate-800 mb-6">Brand Settings</h3>
+        <form action="/save_customize" method="POST" enctype="multipart/form-data">
+            <div class="space-y-6">
+                <!-- Profile Picture -->
+                <div class="flex items-center gap-4">
+                    <div class="w-16 h-16 rounded-full overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0">
+                        {% if user_info and user_info.profile_pic %}
+                            <img src="{{ user_info.profile_pic }}" class="w-full h-full object-cover">
+                        {% else %}
+                            <i class="fa-solid fa-camera text-slate-400 text-xl"></i>
+                        {% endif %}
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-bold text-slate-700 mb-1">Profile Photo</label>
+                        <input type="file" name="profile_pic" accept="image/*" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-indigo-50 file:text-primary hover:file:bg-indigo-100 transition-all cursor-pointer">
+                        <p class="text-[11px] text-slate-400 mt-1">Shown on specific templates (JPG, PNG)</p>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">Display Name</label>
+                    <input type="text" name="display_name" value="{{ user_info.display_name if user_info and user_info.display_name else 'Merchant' }}" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all shadow-sm" placeholder="e.g. My Awesome Shop">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-3">Checkout Theme <span class="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded-full ml-2">4 New Themes</span></label>
+                    <div class="grid grid-cols-2 gap-3">
+                        
+                        <!-- Theme 1: Default Light -->
+                        <label class="border rounded-xl p-3 cursor-pointer flex items-center gap-3 transition-all {% if not user_info or user_info.theme == 'default' %}border-primary bg-indigo-50 ring-2 ring-primary ring-offset-1{% else %}border-slate-200{% endif %}" onclick="selectTheme(this, 'default')">
+                            <input type="radio" name="theme" value="default" class="hidden" {% if not user_info or user_info.theme == 'default' %}checked{% endif %}>
+                            <div class="w-8 h-8 rounded-md bg-white border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+                                <div class="w-full h-3 bg-primary"></div>
+                                <div class="flex-1 w-full bg-white flex items-center justify-center"><div class="w-4 h-4 rounded-sm bg-slate-100"></div></div>
+                            </div>
+                            <div>
+                                <span class="block text-sm font-bold text-slate-700 leading-tight">Nova Light</span>
+                                <span class="block text-[10px] text-slate-500">Standard</span>
+                            </div>
+                        </label>
+
+                        <!-- Theme 2: Premium Dark -->
+                        <label class="border rounded-xl p-3 cursor-pointer flex items-center gap-3 transition-all {% if user_info and user_info.theme == 'premium' %}border-primary bg-indigo-50 ring-2 ring-primary ring-offset-1{% else %}border-slate-200{% endif %}" onclick="selectTheme(this, 'premium')">
+                            <input type="radio" name="theme" value="premium" class="hidden" {% if user_info and user_info.theme == 'premium' %}checked{% endif %}>
+                            <div class="w-8 h-8 rounded-md bg-slate-900 border border-slate-700 shadow-sm flex flex-col overflow-hidden">
+                                <div class="w-full h-3 bg-slate-800 border-b border-slate-700"></div>
+                                <div class="flex-1 w-full flex items-center justify-center"><div class="w-4 h-4 rounded-sm bg-slate-800"></div></div>
+                            </div>
+                            <div>
+                                <span class="block text-sm font-bold text-slate-700 leading-tight">Nova Dark</span>
+                                <span class="block text-[10px] text-slate-500">Premium</span>
+                            </div>
+                        </label>
+                        
+                        <!-- Theme 3: Clean White (GuruPay) -->
+                        <label class="border rounded-xl p-3 cursor-pointer flex items-center gap-3 transition-all {% if user_info and user_info.theme == 'clean' %}border-primary bg-indigo-50 ring-2 ring-primary ring-offset-1{% else %}border-slate-200{% endif %}" onclick="selectTheme(this, 'clean')">
+                            <input type="radio" name="theme" value="clean" class="hidden" {% if user_info and user_info.theme == 'clean' %}checked{% endif %}>
+                            <div class="w-8 h-8 rounded-md bg-white border border-slate-200 shadow-sm flex flex-col items-center justify-center p-1 gap-1">
+                                <div class="w-2.5 h-2.5 rounded-full bg-slate-300"></div>
+                                <div class="w-5 h-4 bg-slate-100 rounded-sm"></div>
+                            </div>
+                            <div>
+                                <span class="block text-sm font-bold text-slate-700 leading-tight">Clean White</span>
+                                <span class="block text-[10px] text-slate-500">With Photo</span>
+                            </div>
+                        </label>
+                        
+                        <!-- Theme 4: Modern Gradient -->
+                        <label class="border rounded-xl p-3 cursor-pointer flex items-center gap-3 transition-all {% if user_info and user_info.theme == 'gradient' %}border-primary bg-indigo-50 ring-2 ring-primary ring-offset-1{% else %}border-slate-200{% endif %}" onclick="selectTheme(this, 'gradient')">
+                            <input type="radio" name="theme" value="gradient" class="hidden" {% if user_info and user_info.theme == 'gradient' %}checked{% endif %}>
+                            <div class="w-8 h-8 rounded-md bg-gradient-to-br from-indigo-500 to-purple-600 shadow-sm flex items-center justify-center p-1">
+                                <div class="w-5 h-6 bg-white/20 rounded-sm backdrop-blur-sm border border-white/30"></div>
+                            </div>
+                            <div>
+                                <span class="block text-sm font-bold text-slate-700 leading-tight">Gradient</span>
+                                <span class="block text-[10px] text-slate-500">Vibrant</span>
+                            </div>
+                        </label>
+
+                    </div>
+                </div>
+                
+                <button type="submit" class="w-full bg-primary hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-colors shadow-sm">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Live Preview -->
+    <div class="bg-slate-100 rounded-3xl p-4 lg:p-8 flex items-center justify-center border border-slate-200 relative overflow-hidden h-[800px]">
+        <div class="absolute top-4 left-4 bg-white/80 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-slate-500 shadow-sm border border-slate-200 z-10 flex items-center gap-2">
+            <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+            Live Preview
+        </div>
+        
+        <div class="w-full max-w-[360px] h-[720px] bg-white rounded-[2.5rem] shadow-2xl border-[8px] border-slate-800 overflow-hidden relative">
+            <!-- Notch -->
+            <div class="absolute top-0 inset-x-0 h-6 bg-slate-800 rounded-b-3xl w-40 mx-auto z-20"></div>
+            <!-- Iframe -->
+            <iframe id="previewIframe" src="/preview_checkout" class="w-full h-full border-0 bg-slate-50"></iframe>
+        </div>
+    </div>
+</div>
+
+<script>
+function selectTheme(element, theme) {
+    document.querySelectorAll('input[name="theme"]').forEach(r => {
+        r.parentElement.classList.remove('border-primary', 'bg-indigo-50', 'ring-2', 'ring-primary', 'ring-offset-1');
+        r.parentElement.classList.add('border-slate-200');
+    });
+    element.classList.remove('border-slate-200');
+    element.classList.add('border-primary', 'bg-indigo-50', 'ring-2', 'ring-primary', 'ring-offset-1');
+    element.querySelector('input').checked = true;
+    
+    // Live update the iframe!
+    const iframe = document.getElementById('previewIframe');
+    if(iframe) {
+        iframe.src = '/preview_checkout?theme=' + theme;
+    }
+}
+</script>
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    if(urlParams.has("success")) {
+        Swal.fire({
+            icon: "success",
+            title: "Success",
+            text: urlParams.get("success"),
+            confirmButtonColor: "#4f46e5",
+            timer: 2000,
+            showConfirmButton: false
+        });
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+</script>
+{% endblock %}
+

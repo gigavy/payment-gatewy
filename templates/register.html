@@ -1,0 +1,165 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - NovaPay Gateway</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: { 
+                    colors: { 
+                        primary: '#2563eb', /* Royal Blue */
+                        darkblue: '#1e3a8a',
+                        textMain: '#0f172a'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        
+        .bg-grid {
+            background-size: 40px 40px;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex text-slate-800">
+    
+    <!-- Left Side: Branding (Hidden on mobile) -->
+    <div class="hidden lg:flex w-5/12 bg-darkblue text-white flex-col relative overflow-hidden bg-grid">
+        <div class="absolute inset-0 bg-gradient-to-br from-blue-900/90 to-blue-600/90 mix-blend-multiply"></div>
+        
+        <div class="relative z-10 p-12 flex flex-col h-full">
+            <div class="flex items-center gap-3 text-2xl font-black mb-16">
+                <div class="w-10 h-10 bg-white text-primary rounded-xl flex items-center justify-center">
+                    <span class="text-xl">N</span>
+                </div>
+                NovaPay™
+            </div>
+            
+            <div class="mt-auto mb-auto">
+                <h1 class="text-5xl font-black mb-2 tracking-tight">Join the future</h1>
+                <h1 class="text-5xl font-black text-blue-400 mb-6 tracking-tight">of payments.</h1>
+                
+                <p class="text-blue-100/80 text-lg mb-10 max-w-md leading-relaxed font-medium">
+                    Create your merchant account today. It takes less than 2 minutes to start accepting UPI payments.
+                </p>
+                
+                <ul class="space-y-4">
+                    <li class="flex items-center gap-3 text-sm font-medium text-blue-50">
+                        <div class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                            <i class="fa-solid fa-check text-[10px]"></i>
+                        </div>
+                        Instant Account Activation
+                    </li>
+                    <li class="flex items-center gap-3 text-sm font-medium text-blue-50">
+                        <div class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                            <i class="fa-solid fa-check text-[10px]"></i>
+                        </div>
+                        Secure & Encrypted
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Side: Register Form -->
+    <div class="w-full lg:w-7/12 flex items-center justify-center p-6 sm:p-12 relative overflow-y-auto">
+        <a href="/" class="absolute top-8 left-8 lg:hidden text-slate-500 hover:text-slate-800 text-sm font-bold flex items-center gap-2">
+            <i class="fa-solid fa-chevron-left"></i> Home
+        </a>
+
+        <div class="w-full max-w-md bg-white p-8 sm:p-10 rounded-3xl shadow-2xl shadow-slate-200/50 border border-slate-100 my-8">
+            
+            <div class="flex items-center justify-center gap-2 text-2xl font-black mb-6 text-slate-800 lg:hidden">
+                <span class="text-primary text-3xl">N</span> NovaPay™
+            </div>
+
+            <div class="text-center mb-8">
+                <h2 class="text-2xl font-black text-slate-800 tracking-tight">Create an account</h2>
+                <p class="text-slate-500 text-sm mt-2">Start accepting payments for free</p>
+            </div>
+
+            {% if error %}
+            <div class="bg-red-50 border border-red-100 text-red-600 text-xs font-bold p-3 rounded-xl mb-6 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-circle-exclamation"></i> {{ error }}
+            </div>
+            {% endif %}
+
+            
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <a href="/login/google" class="flex items-center justify-center gap-2 py-2.5 border border-slate-200 rounded-xl hover:bg-slate-50 transition text-sm font-bold text-slate-700">
+                    <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-4 h-4" alt="Google"> Google
+                </a>
+                <button type="button" class="flex items-center justify-center gap-2 py-2.5 border border-slate-200 rounded-xl hover:bg-slate-50 transition text-sm font-bold text-slate-700">
+                    <i class="fa-solid fa-fingerprint text-primary text-base"></i> Passkey
+                </button>
+            </div>
+
+            <div class="flex items-center mb-6">
+                <div class="flex-1 h-px bg-slate-200"></div>
+                <span class="px-3 text-xs text-slate-400 font-medium">or register with email</span>
+                <div class="flex-1 h-px bg-slate-200"></div>
+            </div>
+
+            <form method="POST" action="/register">
+                <div class="mb-4">
+                    <label class="block text-sm font-bold text-slate-700 mb-1.5">Business / Display Name</label>
+                    <input type="text" name="display_name" class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="E.g. Nova Store" required>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-bold text-slate-700 mb-1.5">Email address or Username</label>
+                    <input type="text" name="username" class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="you@example.com" required>
+                </div>
+                
+                <div class="mb-6 relative">
+                    <label class="block text-sm font-bold text-slate-700 mb-1.5">Password</label>
+                    <input type="password" name="password" id="password" class="w-full pl-4 pr-10 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="Create a strong password" required>
+                    <button type="button" onclick="togglePassword()" class="absolute right-3 bottom-2.5 text-slate-400 hover:text-slate-600">
+                        <i class="fa-regular fa-eye" id="eyeIcon"></i>
+                    </button>
+                </div>
+
+                <button type="submit" class="w-full bg-primary hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-md shadow-blue-500/20 text-sm flex items-center justify-center gap-2">
+                    Create Account <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </form>
+
+            <p class="text-center mt-6 text-sm text-slate-500">
+                Already have an account? <a href="/login" class="text-primary font-bold hover:underline">Sign in</a>
+            </p>
+            
+            <p class="text-center mt-6 text-[10px] text-slate-400">
+                By creating an account, you agree to our <a href="#" class="underline">Terms of Service</a> and <a href="#" class="underline">Privacy Policy</a>.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        function togglePassword() {
+            const pwd = document.getElementById('password');
+            const icon = document.getElementById('eyeIcon');
+            if (pwd.type === 'password') {
+                pwd.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                pwd.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+    </script>
+</body>
+</html>
