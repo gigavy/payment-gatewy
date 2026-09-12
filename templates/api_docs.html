@@ -1,4 +1,4 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 
 {% block content %}
 <div class="mb-6">
@@ -30,6 +30,13 @@
                 <i class="fa-solid fa-triangle-exclamation text-red-500 mt-0.5"></i>
                 <p class="text-[11px] font-bold text-red-700">Keep this key secret. Do not share it publicly or expose it in client-side code (JS, React, etc).</p>
             </div>
+
+            <form action="/regenerate_key" method="POST" class="mt-4" onsubmit="return confirm('Are you sure you want to regenerate your API Key? All existing integrations will stop working until updated.');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-rotate"></i> Regenerate API Key
+                </button>
+            </form>
         </div>
 
         <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
@@ -139,6 +146,19 @@ if signature == headers.get('X-FamGateway-Signature'):
             showConfirmButton: false,
             timer: 2000
         });
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has("success")) {
+        Swal.fire({
+            icon: "success",
+            title: "Success",
+            text: urlParams.get("success"),
+            confirmButtonColor: "#4f46e5",
+            timer: 2500,
+            showConfirmButton: false
+        });
+        window.history.replaceState({}, document.title, window.location.pathname);
     }
 </script>
 {% endblock %}

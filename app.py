@@ -993,7 +993,8 @@ def settings():
     user_id = session['user_id']
     user_info = get_user(user_id)
     active_tab = request.args.get('tab', 'profile')
-    newly_generated_key = session.pop('newly_generated_raw_key', None)
+    if active_tab not in ('profile', 'security', 'appearance'):
+        active_tab = 'profile'
     
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -1008,8 +1009,7 @@ def settings():
                            user_info=user_info, 
                            active_tab=active_tab,
                            active_sessions=active_sessions,
-                           current_session_token=session.get('session_token'),
-                           newly_generated_key=newly_generated_key)
+                           current_session_token=session.get('session_token'))
 
 # 1. PROFILE - IDENTITY & ACCESS
 @app.route('/settings/profile', methods=['POST'])
@@ -2197,21 +2197,26 @@ def monitor_gmails():
             pass
         time.sleep(1.5)
 
+@app.route('/api_docs')
+@login_required
+def api_docs():
+    user_id = session['user_id']
+    user_info = get_user(user_id)
+    return render_template('api_docs.html', user_info=user_info)
+
 @app.route('/regenerate_key', methods=['POST'])
+@login_required
 def regenerate_key():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-        
-    import secrets
+    user_id = session['user_id']
     new_api_key = 'FAM' + secrets.token_hex(16).upper()
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute('UPDATE users SET api_key = ? WHERE user_id = ?', (new_api_key, session['user_id']))
+    c.execute('UPDATE users SET api_key = ? WHERE user_id = ?', (new_api_key, user_id))
     conn.commit()
     conn.close()
     
     flash('API Key successfully regenerated! Update your webhook integrations.')
-    return redirect(url_for('dashboard'))
+    return redirect(url_for('api_docs', success='API Key successfully regenerated!'))
 
 
 # ============================================

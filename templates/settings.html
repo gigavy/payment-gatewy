@@ -33,13 +33,13 @@
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
             <div class="flex items-center gap-3 mb-1">
-                <h1 class="text-2xl font-black text-slate-800 tracking-tight">Gateway Settings</h1>
+                <h1 class="text-2xl font-black text-slate-800 tracking-tight">Account & Security Settings</h1>
                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">
                     <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    Production Grade
+                    Live Panel
                 </span>
             </div>
-            <p class="text-sm font-medium text-slate-500">Manage identity, payment TTL rules, API security keys, webhooks, and checkout appearance.</p>
+            <p class="text-sm font-medium text-slate-500">Manage your profile credentials, device sessions, two-factor authentication, and checkout appearance.</p>
         </div>
 
         <!-- Quick Status Pills -->
@@ -53,49 +53,13 @@
                 <i class="fa-solid fa-triangle-exclamation"></i> 2FA Recommended
             </div>
             {% endif %}
-
-            {% if user_info and user_info.telegram_configured %}
-            <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-50 border border-sky-200 text-xs font-bold text-sky-700">
-                <i class="fa-brands fa-telegram"></i> Telegram Alerts On
-            </div>
-            {% endif %}
         </div>
     </div>
 
-    <!-- One-Time API Key Banner (If just regenerated) -->
-    {% if newly_generated_key %}
-    <div class="mb-8 p-5 bg-amber-50 border-2 border-amber-300 rounded-2xl shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div class="flex items-start gap-3">
-            <div class="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 text-lg shadow-sm">
-                <i class="fa-solid fa-key"></i>
-            </div>
-            <div>
-                <h4 class="text-sm font-bold text-amber-900">New {{ newly_generated_key.type }} API Key Generated</h4>
-                <p class="text-xs text-amber-700 mt-0.5">Copy this key now. For maximum security, raw secrets are hashed via SHA-256 and cannot be shown again.</p>
-                <div class="mt-2 flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-amber-200 font-mono text-xs font-bold text-slate-800 select-all">
-                    <span id="newKeyText">{{ newly_generated_key.key }}</span>
-                </div>
-            </div>
-        </div>
-        <button onclick="copyToClipboard('newKeyText', this)" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-sm shrink-0">
-            <i class="fa-regular fa-copy"></i> Copy Key
-        </button>
-    </div>
-    {% endif %}
-
-    <!-- Tabs Navigation Bar -->
+    <!-- Tabs Navigation Bar (Profile, Security, Appearance) -->
     <div class="flex items-center gap-2 overflow-x-auto pb-3 mb-6 no-scrollbar border-b border-slate-200">
         <button onclick="switchTab('profile')" id="tab-nav-profile" class="tab-btn active px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shrink-0 transition">
             <i class="fa-solid fa-user-gear"></i> Profile & Identity
-        </button>
-        <button onclick="switchTab('business')" id="tab-nav-business" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shrink-0 transition">
-            <i class="fa-solid fa-briefcase"></i> Business Details
-        </button>
-        <button onclick="switchTab('payment')" id="tab-nav-payment" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shrink-0 transition">
-            <i class="fa-solid fa-indian-rupee-sign"></i> Payment & TTL Rules
-        </button>
-        <button onclick="switchTab('api')" id="tab-nav-api" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shrink-0 transition">
-            <i class="fa-solid fa-code"></i> API & Webhooks
         </button>
         <button onclick="switchTab('security')" id="tab-nav-security" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shrink-0 transition">
             <i class="fa-solid fa-shield-cat"></i> Security & Sessions
@@ -236,256 +200,7 @@
         </div>
     </div>
 
-    <!-- ==================== TAB 2: BUSINESS DETAILS ==================== -->
-    <div id="tab-content-business" class="tab-pane hidden">
-        <div class="max-w-3xl bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-100">
-            <div class="mb-6">
-                <h3 class="text-base font-bold text-slate-800">Public Business Details</h3>
-                <p class="text-xs text-slate-500 mt-0.5">These customer-facing details feed directly into your dynamic checkout page and payment receipts.</p>
-            </div>
-
-            <form id="businessForm" action="/settings/business" method="POST" enctype="multipart/form-data" class="space-y-6">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-
-                <!-- Business Logo Preview & Upload -->
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Checkout Business Logo</label>
-                    <div class="flex items-center gap-5 p-4 rounded-xl bg-slate-50 border border-slate-200/60">
-                        <div class="w-20 h-20 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center overflow-hidden p-2 shrink-0">
-                            {% if user_info and user_info.business_logo %}
-                                <img src="{{ user_info.business_logo }}" alt="Logo" class="max-w-full max-h-full object-contain">
-                            {% else %}
-                                <i class="fa-solid fa-store text-2xl text-slate-300"></i>
-                            {% endif %}
-                        </div>
-                        <div class="flex-1">
-                            <input type="file" name="business_logo" accept="image/png,image/jpeg,image/webp" class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary file:text-white hover:file:bg-indigo-700 transition cursor-pointer">
-                            <p class="text-[11px] text-slate-400 mt-1.5">Recommended 1:1 square or 4:3 ratio. Capped at 2MB. Displayed prominently on customer payment screens.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Public Business Name</label>
-                    <input type="text" name="business_name" value="{{ user_info.business_name if user_info else '' }}" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition" placeholder="e.g. Acme Payments Pvt Ltd">
-                    <p class="text-[11px] text-slate-400 mt-1">Rendered above the order amount and in UPI payment reference headers.</p>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Business Website</label>
-                    <div class="relative">
-                        <input type="url" name="business_website" value="{{ user_info.business_website if user_info else '' }}" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition pl-10" placeholder="https://example.com">
-                        <i class="fa-solid fa-globe absolute left-3.5 top-3.5 text-slate-400"></i>
-                    </div>
-                    <div class="mt-2 flex items-start gap-2 text-[11px] text-slate-500">
-                        <i class="fa-solid fa-circle-check text-emerald-500 mt-0.5"></i>
-                        <span>Must resolve via HTTP/HTTPS. The gateway actively pings this domain upon saving to prevent broken customer links.</span>
-                    </div>
-                </div>
-
-                <div class="pt-4 flex justify-end">
-                    <button type="submit" class="px-6 py-3 bg-primary hover:bg-indigo-700 text-white font-bold rounded-xl text-sm transition shadow-sm flex items-center gap-2">
-                        <i class="fa-solid fa-check"></i> Save Business Identity
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- ==================== TAB 3: PAYMENT & TTL RULES ==================== -->
-    <div id="tab-content-payment" class="tab-pane hidden">
-        <div class="max-w-3xl space-y-6">
-            
-            <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-100">
-                <div class="flex items-center gap-3 mb-6">
-                    <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-lg">
-                        <i class="fa-solid fa-clock"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-base font-bold text-slate-800">Hard Payment Expiry & Money Safety</h3>
-                        <p class="text-xs text-slate-500">Real-time payment TTL enforcement in IMAP monitor and order processing.</p>
-                    </div>
-                </div>
-
-                <form id="paymentRulesForm" action="/settings/payment_rules" method="POST" class="space-y-6">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-
-                    <!-- Expiry Window -->
-                    <div class="p-5 rounded-2xl bg-amber-50/70 border border-amber-200/80">
-                        <label class="block text-xs font-bold text-amber-900 uppercase tracking-wider mb-2">Transaction Expiry Window (TTL)</label>
-                        <div class="flex items-center gap-3">
-                            <input type="number" name="payment_expiry_minutes" min="1" max="60" value="{{ user_info.payment_expiry_minutes if user_info and user_info.payment_expiry_minutes else 5 }}" required class="w-32 px-4 py-2.5 bg-white border border-amber-300 rounded-xl text-base font-black text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 transition">
-                            <span class="text-sm font-bold text-amber-800">Minutes</span>
-                        </div>
-                        <div class="mt-3 flex items-start gap-2.5 text-xs text-amber-800 leading-relaxed">
-                            <i class="fa-solid fa-shield-halved text-amber-600 mt-0.5 text-sm shrink-0"></i>
-                            <span><strong>Hard Server Gate:</strong> If a customer sends money after this window has passed, the IMAP Gmail monitor will <em>reject and flag</em> the transaction as <code class="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold">expired</code> rather than auto-crediting. This eliminates late-credit exploits.</span>
-                        </div>
-                    </div>
-
-                    <!-- Domain Whitelist -->
-                    <div>
-                        <div class="flex items-center justify-between mb-2">
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Allowed Redirect Domains (Phishing Protection)</label>
-                            <span class="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">Anti-Open Redirect</span>
-                        </div>
-                        <textarea name="allowed_redirect_domains" rows="3" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition" placeholder="e.g. myshop.com, checkout.myshop.com, portal.partner.in">{{ user_info.allowed_redirect_domains if user_info and user_info.allowed_redirect_domains else '' }}</textarea>
-                        <p class="text-[11px] text-slate-400 mt-1.5">Comma or newline separated. Any redirect URL returned or passed through the API must match your registered website domain or this whitelist.</p>
-                    </div>
-
-                    <!-- Default Success & Failed URLs -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Default Success Callback URL</label>
-                            <input type="url" name="success_redirect_url" value="{{ user_info.success_redirect_url if user_info and user_info.success_redirect_url else '' }}" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition" placeholder="https://myshop.com/pay/success">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Default Failed / Cancel URL</label>
-                            <input type="url" name="failed_redirect_url" value="{{ user_info.failed_redirect_url if user_info and user_info.failed_redirect_url else '' }}" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition" placeholder="https://myshop.com/pay/cancelled">
-                        </div>
-                    </div>
-
-                    <div class="pt-4 flex justify-end">
-                        <button type="submit" class="px-6 py-3 bg-primary hover:bg-indigo-700 text-white font-bold rounded-xl text-sm transition shadow-sm flex items-center gap-2">
-                            <i class="fa-solid fa-lock"></i> Save Money Safety Rules
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- ==================== TAB 4: API & WEBHOOKS ==================== -->
-    <div id="tab-content-api" class="tab-pane hidden">
-        <div class="space-y-8 max-w-4xl">
-            
-            <!-- API Keys Section -->
-            <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-100">
-                <div class="flex items-center justify-between mb-6">
-                    <div>
-                        <h3 class="text-base font-bold text-slate-800">Merchant API Keys</h3>
-                        <p class="text-xs text-slate-500 mt-0.5">Stored as cryptographic SHA-256 hashes. Raw keys are only shown once during creation.</p>
-                    </div>
-                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700">
-                        <i class="fa-solid fa-fingerprint"></i> SHA-256 Hashed
-                    </span>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    
-                    <!-- Live Key Card -->
-                    <div class="p-5 rounded-2xl border border-slate-200 bg-slate-50 flex flex-col justify-between">
-                        <div>
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Live Secret Key
-                                </span>
-                                <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700">Production</span>
-                            </div>
-                            <div class="p-3 bg-white rounded-xl border border-slate-200 font-mono text-xs text-slate-700 mb-3 flex items-center justify-between">
-                                <span>live_sk_••••••••••••{{ user_info.live_api_key_hint if user_info and user_info.live_api_key_hint else '••••' }}</span>
-                                <i class="fa-solid fa-shield text-slate-300"></i>
-                            </div>
-                            <p class="text-[11px] text-slate-400 leading-relaxed">Used for authenticating real orders via <code class="font-mono text-slate-600">/api/create-order</code>.</p>
-                        </div>
-                        <div class="mt-4 pt-4 border-t border-slate-200/80">
-                            <button type="button" onclick="confirmRegenerateKey('live')" class="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2">
-                                <i class="fa-solid fa-rotate"></i> Regenerate Live Key
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Test Key Card -->
-                    <div class="p-5 rounded-2xl border border-slate-200 bg-slate-50 flex flex-col justify-between">
-                        <div>
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                                    <span class="w-2 h-2 rounded-full bg-amber-500"></span> Sandbox Test Key
-                                </span>
-                                <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-700">Staging</span>
-                            </div>
-                            <div class="p-3 bg-white rounded-xl border border-slate-200 font-mono text-xs text-slate-700 mb-3 flex items-center justify-between">
-                                <span>test_sk_••••••••••••{{ user_info.test_api_key_hint if user_info and user_info.test_api_key_hint else '••••' }}</span>
-                                <i class="fa-solid fa-vial text-slate-300"></i>
-                            </div>
-                            <p class="text-[11px] text-slate-400 leading-relaxed">Simulate order creation without triggering live UPI monitor events.</p>
-                        </div>
-                        <div class="mt-4 pt-4 border-t border-slate-200/80">
-                            <button type="button" onclick="confirmRegenerateKey('test')" class="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2">
-                                <i class="fa-solid fa-rotate"></i> Regenerate Test Key
-                            </button>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-            <!-- Telegram Alerts & Bot Settings -->
-            <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-100">
-                <div class="flex items-center justify-between mb-6">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-sky-50 text-sky-500 flex items-center justify-center font-bold text-lg">
-                            <i class="fa-brands fa-telegram"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-base font-bold text-slate-800">Instant Telegram Payment Alerts</h3>
-                            <p class="text-xs text-slate-500 mt-0.5">Get real-time transaction notifications in your private Telegram channel or chat.</p>
-                        </div>
-                    </div>
-                    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-indigo-50 text-primary border border-indigo-100">
-                        <i class="fa-solid fa-lock"></i> Fernet Encrypted
-                    </span>
-                </div>
-
-                <form id="telegramForm" action="/settings/notifications" method="POST" class="space-y-5">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Telegram Bot Token</label>
-                            <input type="password" name="telegram_bot_token" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition" placeholder="123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ">
-                            <p class="text-[11px] text-slate-400 mt-1">Obtained from @BotFather. Encrypted with AES/Fernet in DB.</p>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Telegram Chat / Channel ID</label>
-                            <input type="text" name="telegram_chat_id" value="{{ user_info.telegram_chat_id if user_info and user_info.telegram_chat_id else '' }}" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition" placeholder="e.g. 102938475 or -100123456789">
-                            <p class="text-[11px] text-slate-400 mt-1">Obtained from @userinfobot or channel info.</p>
-                        </div>
-                    </div>
-
-                    <div class="pt-2 flex flex-wrap items-center justify-between gap-4">
-                        <button type="button" onclick="sendTestTelegramAlert()" id="testTgBtn" class="px-4 py-2.5 bg-sky-50 hover:bg-sky-100 text-sky-700 font-bold rounded-xl text-xs transition border border-sky-200 flex items-center gap-2">
-                            <i class="fa-solid fa-paper-plane"></i> Send Test Notification
-                        </button>
-
-                        <button type="submit" class="px-6 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs transition shadow-sm flex items-center gap-2">
-                            <i class="fa-solid fa-floppy-disk"></i> Save Telegram Config
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-            <!-- Webhook Signing & Tamper-Proofing Reference -->
-            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-                <div class="flex items-center gap-2.5 mb-3">
-                    <i class="fa-solid fa-shield-check text-emerald-500 text-base"></i>
-                    <h4 class="text-sm font-bold text-slate-800">Webhook Replay Protection & HMAC Signatures</h4>
-                </div>
-                <p class="text-xs text-slate-500 leading-relaxed mb-4">Every outgoing payment notification is cryptographically signed using HMAC-SHA256. Replay attacks are rejected using nonces and a 300-second timestamp drift window.</p>
-                <div class="bg-slate-900 text-slate-200 rounded-xl p-4 font-mono text-[11px] overflow-x-auto space-y-1">
-                    <div class="text-slate-500">// Header verification specification:</div>
-                    <div><span class="text-indigo-400">X-NovaPay-Signature:</span> t=1694520000,v1=5d41402abc4b2a76b9719d911017c592...</div>
-                    <div><span class="text-indigo-400">X-NovaPay-Timestamp:</span> 1694520000</div>
-                    <div><span class="text-indigo-400">X-NovaPay-Nonce:</span> 3fa85f64-5717-4562-b3fc-2c963f66afa6</div>
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- ==================== TAB 5: SECURITY & SESSIONS ==================== -->
+    <!-- ==================== TAB 2: SECURITY & SESSIONS ==================== -->
     <div id="tab-content-security" class="tab-pane hidden">
         <div class="space-y-8 max-w-4xl">
             
@@ -498,7 +213,7 @@
                         </div>
                         <div>
                             <h3 class="text-base font-bold text-slate-800">Two-Factor Authentication (TOTP)</h3>
-                            <p class="text-xs text-slate-500">Protect merchant balance and payout settings with RFC 6238 authenticator apps.</p>
+                            <p class="text-xs text-slate-500">Protect merchant account settings with RFC 6238 authenticator apps.</p>
                         </div>
                     </div>
 
@@ -516,7 +231,7 @@
                 {% if user_info and user_info.totp_enabled %}
                 <div class="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div class="text-xs text-emerald-900 leading-relaxed">
-                        <strong>Your merchant account is actively protected.</strong> A 6-digit TOTP code from Google Authenticator or 1Password is required at every sign-in.
+                        <strong>Your merchant account is actively protected.</strong> A 6-digit TOTP code from Google Authenticator or Authy is required at every sign-in.
                     </div>
                     <button type="button" onclick="disable2FA()" class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl text-xs border border-rose-200 transition shrink-0">
                         Disable 2FA
@@ -589,7 +304,7 @@
         </div>
     </div>
 
-    <!-- ==================== TAB 6: APPEARANCE & LIVE PREVIEW ==================== -->
+    <!-- ==================== TAB 3: APPEARANCE & LIVE PREVIEW ==================== -->
     <div id="tab-content-appearance" class="tab-pane hidden">
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             
@@ -830,13 +545,13 @@
 <script>
     const CSRF_TOKEN = "{{ csrf_token }}";
     let isFormDirty = false;
-    let currentTab = "{{ active_tab if active_tab else 'profile' }}";
+    let currentTab = "{{ active_tab if active_tab in ['profile', 'security', 'appearance'] else 'profile' }}";
 
     // Tab switcher
     function switchTab(tabId) {
-        // Normalise tab aliases
-        if (tabId === 'payment_rules') tabId = 'payment';
-        if (tabId === 'api_webhooks') tabId = 'api';
+        if (!['profile', 'security', 'appearance'].includes(tabId)) {
+            tabId = 'profile';
+        }
 
         document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -855,7 +570,7 @@
     // Initialize active tab from query or server
     document.addEventListener('DOMContentLoaded', () => {
         const urlParams = new URLSearchParams(window.location.search);
-        let tab = urlParams.get('tab') || "{{ active_tab if active_tab else 'profile' }}";
+        let tab = urlParams.get('tab') || currentTab;
         switchTab(tab);
 
         // Dirty form listeners
@@ -936,50 +651,6 @@
 
     function refreshPreviewIframe() {
         updatePreview();
-    }
-
-    // Copy to clipboard helper
-    function copyToClipboard(elementId, btn) {
-        const text = document.getElementById(elementId).innerText;
-        navigator.clipboard.writeText(text).then(() => {
-            const orig = btn.innerHTML;
-            btn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
-            setTimeout(() => { btn.innerHTML = orig; }, 2000);
-        });
-    }
-
-    // API Key Regeneration Flow
-    function confirmRegenerateKey(keyType) {
-        Swal.fire({
-            title: 'Regenerate ' + keyType.toUpperCase() + ' Key?',
-            text: 'Any application or script using the previous key will immediately stop working until updated.',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc2626',
-            cancelButtonColor: '#64748b',
-            confirmButtonText: 'Yes, Regenerate Key'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = '/settings/api_keys/regenerate';
-                
-                const csrfInput = document.createElement('input');
-                csrfInput.type = 'hidden';
-                csrfInput.name = 'csrf_token';
-                csrfInput.value = CSRF_TOKEN;
-                form.appendChild(csrfInput);
-
-                const typeInput = document.createElement('input');
-                typeInput.type = 'hidden';
-                typeInput.name = 'key_type';
-                typeInput.value = keyType;
-                form.appendChild(typeInput);
-
-                document.body.appendChild(form);
-                form.submit();
-            }
-        });
     }
 
     // Mobile OTP Flow
@@ -1070,35 +741,6 @@
             }
         } catch (e) {
             Swal.fire('Error', 'Network error verifying code', 'error');
-        }
-        btn.innerHTML = orig;
-        btn.disabled = false;
-    }
-
-    // Telegram Test Alert
-    async function sendTestTelegramAlert() {
-        const btn = document.getElementById('testTgBtn');
-        const orig = btn.innerHTML;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending Test...';
-        btn.disabled = true;
-
-        try {
-            const formData = new FormData();
-            formData.append('csrf_token', CSRF_TOKEN);
-
-            const res = await fetch('/settings/notifications/test', {
-                method: 'POST',
-                body: formData
-            });
-            const data = await res.json();
-
-            if (data.status === 'success') {
-                Swal.fire('Telegram Test Sent!', data.message, 'success');
-            } else {
-                Swal.fire('Telegram Error', data.message, 'error');
-            }
-        } catch (e) {
-            Swal.fire('Error', 'Failed to communicate with gateway server', 'error');
         }
         btn.innerHTML = orig;
         btn.disabled = false;
