@@ -970,7 +970,9 @@ def preview_checkout():
     upi_id = user_info.get('upi_id') or "merchant@upi"
     display_name = user_info.get('business_name') or user_info.get('display_name') or "Merchant"
     theme = request.args.get('theme') or user_info.get('theme') or "default"
-    accent_color = request.args.get('accent_color') or user_info.get('accent_color') or "#4f46e5"
+    accent_color = request.args.get('accent_color') or user_info.get('accent_color') or "#000000"
+    if theme != 'custom':
+        accent_color = "#000000"
     profile_pic = user_info.get('business_logo') or user_info.get('profile_pic')
     business_website = user_info.get('business_website') or ""
     
@@ -1467,11 +1469,14 @@ def appearance():
             return redirect(url_for('appearance', error='Security check failed (invalid CSRF).'))
             
         theme = request.form.get('theme', 'default')
-        accent_color = request.form.get('accent_color', '#4f46e5').strip()
+        if theme == 'custom':
+            accent_color = request.form.get('accent_color', '#000000').strip()
+            if not re.match(r'^#[0-9a-fA-F]{6}$', accent_color):
+                accent_color = '#000000'
+        else:
+            accent_color = '#000000'
+            
         layout_density = request.form.get('layout_density', 'comfortable')
-        
-        if not re.match(r'^#[0-9a-fA-F]{6}$', accent_color):
-            accent_color = '#4f46e5'
             
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
