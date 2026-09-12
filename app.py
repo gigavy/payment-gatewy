@@ -1141,32 +1141,44 @@ def settings_verify_mobile_otp():
 @login_required
 def settings_change_password():
     if not verify_csrf():
-        return redirect(url_for('settings', tab='profile', error='Security check failed (invalid CSRF).'))
+        return redirect(url_for('settings', tab='security', error='Security check failed (invalid CSRF).'))
         
     user_id = session['user_id']
     user_info = get_user(user_id)
     current_pass = request.form.get('current_password', '')
     new_pass = request.form.get('new_password', '')
     confirm_pass = request.form.get('confirm_password', '')
+    logout_other = request.form.get('logout_other_devices')
     
     if not check_password_hash(user_info['password_hash'], current_pass):
-        return redirect(url_for('settings', tab='profile', error='Current password is incorrect.'))
+        return redirect(url_for('settings', tab='security', error='Current password is incorrect.'))
         
     if len(new_pass) < 6:
-        return redirect(url_for('settings', tab='profile', error='New password must be at least 6 characters long.'))
+        return redirect(url_for('settings', tab='security', error='New password must be at least 6 characters long.'))
         
     if new_pass != confirm_pass:
-        return redirect(url_for('settings', tab='profile', error='New password and confirmation do not match.'))
+        return redirect(url_for('settings', tab='security', error='New password and confirmation do not match.'))
         
     new_hash = generate_password_hash(new_pass)
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute("UPDATE users SET password_hash=? WHERE user_id=?", (new_hash, user_id))
+    
+    if logout_other:
+        current_token = session.get('session_token')
+        if current_token:
+            c.execute("UPDATE user_sessions SET is_active=0 WHERE user_id=? AND session_token != ?", (user_id, current_token))
+        else:
+            c.execute("UPDATE user_sessions SET is_active=0 WHERE user_id=?", (user_id,))
+            
     conn.commit()
     conn.close()
     
     add_sys_log(user_id, "Account password changed.")
-    return redirect(url_for('settings', tab='profile', success='Password updated successfully!'))
+    msg = 'Password updated successfully!'
+    if logout_other:
+        msg += ' Other device sessions signed out.'
+    return redirect(url_for('settings', tab='security', success=msg))
 
 # 2. BUSINESS DETAILS - BRANDING
 @app.route('/settings/business', methods=['POST'])
