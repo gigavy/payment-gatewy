@@ -1,4 +1,4 @@
-﻿import os
+import os
 import re
 import time
 import uuid
@@ -10,6 +10,10 @@ import threading
 import json
 import hmac
 import hashlib
+import secrets
+import base64
+import struct
+import urllib.parse
 from datetime import datetime, timedelta
 from functools import wraps
 
@@ -43,6 +47,96 @@ def decrypt_pass(cipher_text):
         # Fallback for plain-text passwords saved before this update
         return cipher_text
 
+# --- TWO-FACTOR AUTHENTICATION (RFC 6238 TOTP) ---
+def generate_totp_secret():
+    raw = secrets.token_bytes(20)
+    return base64.b32encode(raw).decode('utf-8').replace('=', '')
+
+def get_totp_token(secret, intervals_no=None):
+    if intervals_no is None:
+        intervals_no = int(time.time()) // 30
+    cleaned = secret.strip().replace(' ', '').upper()
+    missing_padding = len(cleaned) % 8
+    if missing_padding != 0:
+        cleaned += '=' * (8 - missing_padding)
+    try:
+        key = base64.b32decode(cleaned, casefold=True)
+    except Exception:
+        return None
+    msg = struct.pack(">Q", intervals_no)
+    h = hmac.new(key, msg, hashlib.sha1).digest()
+    o = h[19] & 15
+    code = (struct.unpack(">I", h[o:o+4])[0] & 0x7fffffff) % 1000000
+    return f"{code:06d}"
+
+def verify_totp_token(secret, token, window=1):
+    if not secret or not token:
+        return False
+    token = str(token).strip()
+    current_interval = int(time.time()) // 30
+    for i in range(-window, window + 1):
+        expected = get_totp_token(secret, current_interval + i)
+        if expected and hmac.compare_digest(expected, token):
+            return True
+    return False
+
+# --- SAFE REDIRECT URL SANITIZATION ---
+def is_safe_redirect_url(url, allowed_domains=None, fallback_domain=None):
+    if not url: return False
+    try:
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme not in ('http', 'https'):
+            return False
+        hostname = (parsed.hostname or '').lower().strip()
+        if not hostname:
+            return False
+        
+        valid_domains = []
+        if allowed_domains:
+            for d in allowed_domains:
+                d = d.strip().lower()
+                if d:
+                    if '://' in d:
+                        d = urllib.parse.urlparse(d).hostname or d
+                    valid_domains.append(d)
+        if fallback_domain:
+            fb = fallback_domain.strip().lower()
+            if fb:
+                if '://' in fb:
+                    fb = urllib.parse.urlparse(fb).hostname or fb
+                valid_domains.append(fb)
+                
+        if not valid_domains:
+            return False
+            
+        for vd in valid_domains:
+            if hostname == vd or hostname.endswith('.' + vd):
+                return True
+        return False
+    except Exception:
+        return False
+
+# --- DEVICE DETECTION HELPER ---
+def get_device_summary(user_agent_str):
+    if not user_agent_str: return "Desktop Browser"
+    ua = user_agent_str.lower()
+    browser = "Browser"
+    if "edg" in ua: browser = "Edge"
+    elif "chrome" in ua and "opr" not in ua: browser = "Chrome"
+    elif "safari" in ua and "chrome" not in ua: browser = "Safari"
+    elif "firefox" in ua: browser = "Firefox"
+    elif "opr" in ua or "opera" in ua: browser = "Opera"
+    
+    os_name = "Device"
+    if "windows" in ua: os_name = "Windows"
+    elif "macintosh" in ua or "mac os" in ua: os_name = "macOS"
+    elif "android" in ua: os_name = "Android"
+    elif "iphone" in ua: os_name = "iPhone"
+    elif "ipad" in ua: os_name = "iPad"
+    elif "linux" in ua: os_name = "Linux"
+    
+    return f"{browser} on {os_name}"
+
 # ============================================
 # SERVER CONFIGURATION
 # ============================================
@@ -51,6 +145,30 @@ PORT = int(os.environ.get("PORT", 5000))
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "fampay-super-secret-key")
+
+# --- CSRF PROTECTION HELPER ---
+def generate_csrf_token():
+    if 'csrf_token' not in session:
+        session['csrf_token'] = secrets.token_hex(32)
+    return session['csrf_token']
+
+@app.context_processor
+def inject_csrf_token():
+    return dict(csrf_token=generate_csrf_token())
+
+def verify_csrf():
+    if request.method in ['POST', 'PUT', 'DELETE']:
+        # Exempt public payment verification endpoints and checkout callbacks
+        exempt_prefixes = ['/api/', '/pay', '/static']
+        if any(request.path.startswith(p) for p in exempt_prefixes):
+            return True
+        if request.path in ['/login', '/register', '/admin/login']:
+            return True
+        token = request.form.get('csrf_token') or request.headers.get('X-CSRF-Token')
+        expected = session.get('csrf_token')
+        if not token or not expected or not hmac.compare_digest(token, expected):
+            return False
+    return True
 
 # ============================================
 # DATABASE INITIALIZATION
@@ -81,6 +199,26 @@ def init_db():
         add_col('users', 'role')
         add_col('users', 'plan_name')
         add_col('users', 'plan_expiry')
+        add_col('users', 'email')
+        add_col('users', 'mobile')
+        add_col('users', 'business_name')
+        add_col('users', 'business_website')
+        add_col('users', 'business_logo')
+        add_col('users', 'business_support_email')
+        add_col('users', 'payment_expiry_minutes', 'INTEGER DEFAULT 5')
+        add_col('users', 'success_redirect_url')
+        add_col('users', 'failed_redirect_url')
+        add_col('users', 'allowed_redirect_domains')
+        add_col('users', 'live_api_key_hash')
+        add_col('users', 'live_api_key_hint')
+        add_col('users', 'test_api_key_hash')
+        add_col('users', 'test_api_key_hint')
+        add_col('users', 'telegram_bot_token_enc')
+        add_col('users', 'telegram_chat_id_enc')
+        add_col('users', 'totp_secret_enc')
+        add_col('users', 'totp_enabled', 'INTEGER DEFAULT 0')
+        add_col('users', 'accent_color', "TEXT DEFAULT '#4f46e5'")
+        add_col('users', 'layout_density', "TEXT DEFAULT 'comfortable'")
     except:
         pass
 
@@ -180,29 +318,89 @@ def init_db():
             log_time DATETIME
         )
     ''')
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS user_sessions (
+            session_id TEXT PRIMARY KEY,
+            user_id INTEGER,
+            session_token TEXT UNIQUE,
+            ip_address TEXT,
+            user_agent TEXT,
+            device_summary TEXT,
+            created_at DATETIME,
+            last_active_at DATETIME,
+            is_active INTEGER DEFAULT 1
+        )
+    ''')
+    
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS webhook_nonces (
+            nonce TEXT PRIMARY KEY,
+            created_at DATETIME
+        )
+    ''')
+    
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS mobile_verification_otps (
+            user_id INTEGER PRIMARY KEY,
+            new_mobile TEXT,
+            otp_code TEXT,
+            expires_at DATETIME
+        )
+    ''')
+    
     conn.commit()
     conn.close()
 
 def get_user(user_id):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("SELECT upi_id, gmail, app_pass, api_key, display_name, theme, username, provider, profile_pic, role, plan_name, plan_expiry FROM users WHERE user_id = ?", (user_id,))
+    c.execute("""SELECT user_id, username, upi_id, gmail, app_pass, api_key, created_at,
+                        display_name, theme, provider, profile_pic, role, plan_name, plan_expiry,
+                        email, mobile, business_name, business_website, business_logo, business_support_email,
+                        payment_expiry_minutes, success_redirect_url, failed_redirect_url, allowed_redirect_domains,
+                        live_api_key_hash, live_api_key_hint, test_api_key_hash, test_api_key_hint,
+                        telegram_bot_token_enc, telegram_chat_id_enc, totp_secret_enc, totp_enabled,
+                        accent_color, layout_density, password_hash
+                 FROM users WHERE user_id = ?""", (user_id,))
     row = c.fetchone()
     conn.close()
     if row:
         return {
-            "upi_id": row[0],
-            "gmail": row[1],
-            "app_pass": row[2],
-            "api_key": row[3],
-            "display_name": row[4] or "Merchant",
-            "theme": row[5] or "default",
-            "username": row[6],
-            "provider": row[7] or "fampay",
-            "profile_pic": row[8] if len(row) > 8 and row[8] else None,
-            "role": row[9] if len(row) > 9 and row[9] else "merchant",
-            "plan_name": row[10] if len(row) > 10 and row[10] else "Free",
-            "plan_expiry": row[11] if len(row) > 11 and row[11] else None
+            "user_id": row[0],
+            "username": row[1],
+            "upi_id": row[2],
+            "gmail": row[3],
+            "app_pass": row[4],
+            "api_key": row[5],
+            "created_at": row[6],
+            "display_name": row[7] or "Merchant",
+            "theme": row[8] or "default",
+            "provider": row[9] or "fampay",
+            "profile_pic": row[10],
+            "role": row[11] or "merchant",
+            "plan_name": row[12] or "Free",
+            "plan_expiry": row[13],
+            "email": row[14] or "",
+            "mobile": row[15] or "",
+            "business_name": row[16] or (row[7] or "Merchant"),
+            "business_website": row[17] or "",
+            "business_logo": row[18] or row[10],
+            "business_support_email": row[19] or (row[14] or ""),
+            "payment_expiry_minutes": int(row[20]) if row[20] else 5,
+            "success_redirect_url": row[21] or "",
+            "failed_redirect_url": row[22] or "",
+            "allowed_redirect_domains": row[23] or "",
+            "live_api_key_hash": row[24],
+            "live_api_key_hint": row[25] or (row[5][-4:] if row[5] and len(row[5]) >= 4 else "none"),
+            "test_api_key_hash": row[26],
+            "test_api_key_hint": row[27] or "none",
+            "telegram_configured": bool(row[28] and row[29]),
+            "telegram_chat_id": decrypt_pass(row[29]) if row[29] else "",
+            "totp_enabled": bool(row[31]),
+            "accent_color": row[32] or "#4f46e5",
+            "layout_density": row[33] or "comfortable",
+            "password_hash": row[34]
         }
     return None
 
@@ -378,8 +576,44 @@ def login_required(f):
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
             return redirect(url_for('login'))
+            
+        session_token = session.get('session_token')
+        if session_token:
+            conn = sqlite3.connect(DB_FILE)
+            c = conn.cursor()
+            c.execute("SELECT is_active FROM user_sessions WHERE session_token=? AND user_id=?", (session_token, session['user_id']))
+            row = c.fetchone()
+            if not row or row[0] != 1:
+                conn.close()
+                session.clear()
+                return redirect(url_for('login', error='Your session has expired or was revoked. Please sign in again.'))
+            c.execute("UPDATE user_sessions SET last_active_at=? WHERE session_token=?", (datetime.now().isoformat(), session_token))
+            conn.commit()
+            conn.close()
         return f(*args, **kwargs)
     return decorated_function
+
+def establish_user_session(user_id):
+    session_token = secrets.token_hex(32)
+    session_id = "sess_" + secrets.token_hex(12)
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr) or '127.0.0.1'
+    if ',' in ip:
+        ip = ip.split(',')[0].strip()
+    ua = request.headers.get('User-Agent', '')
+    summary = get_device_summary(ua)
+    now_str = datetime.now().isoformat()
+    
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("""INSERT INTO user_sessions (session_id, user_id, session_token, ip_address, user_agent, device_summary, created_at, last_active_at, is_active)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)""", (session_id, user_id, session_token, ip, ua, summary, now_str, now_str))
+    conn.commit()
+    conn.close()
+    
+    session['user_id'] = user_id
+    session['session_token'] = session_token
+    session['session_id'] = session_id
+    session['csrf_token'] = secrets.token_hex(32)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -388,16 +622,45 @@ def login():
         password = request.form.get('password')
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
-        c.execute("SELECT user_id, password_hash FROM users WHERE username=?", (username,))
+        c.execute("SELECT user_id, password_hash, totp_enabled FROM users WHERE username=?", (username,))
         row = c.fetchone()
         conn.close()
         
         if row and check_password_hash(row[1], password):
-            session['user_id'] = row[0]
+            # Check if 2FA is enabled
+            if row[2] == 1:
+                session['pending_2fa_user_id'] = row[0]
+                return redirect(url_for('login_2fa'))
+            establish_user_session(row[0])
             return redirect(url_for('dashboard'))
         else:
             return render_template('login.html', error='Invalid credentials')
     return render_template('login.html')
+
+@app.route('/login/2fa', methods=['GET', 'POST'])
+def login_2fa():
+    user_id = session.get('pending_2fa_user_id')
+    if not user_id:
+        return redirect(url_for('login'))
+        
+    error = None
+    if request.method == 'POST':
+        code = request.form.get('code', '').strip()
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("SELECT totp_secret_enc FROM users WHERE user_id=?", (user_id,))
+        row = c.fetchone()
+        conn.close()
+        
+        if row and row[0]:
+            secret = decrypt_pass(row[0])
+            if verify_totp_token(secret, code):
+                session.pop('pending_2fa_user_id', None)
+                establish_user_session(user_id)
+                return redirect(url_for('dashboard'))
+        error = "Invalid 2FA code. Please check your authenticator app and try again."
+        
+    return render_template('login_2fa.html', error=error)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -414,7 +677,7 @@ def register():
             c.execute("INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)", (username, password_hash, datetime.now().isoformat()))
             user_id = c.lastrowid
             conn.commit()
-            session['user_id'] = user_id
+            establish_user_session(user_id)
             return redirect(url_for('dashboard'))
         except sqlite3.IntegrityError:
             return render_template('register.html', error='Username already exists')
@@ -515,7 +778,17 @@ def admin_make_admin():
 
 @app.route('/logout')
 def logout():
-    session.pop('user_id', None)
+    session_token = session.get('session_token')
+    if session_token:
+        try:
+            conn = sqlite3.connect(DB_FILE)
+            c = conn.cursor()
+            c.execute("UPDATE user_sessions SET is_active=0 WHERE session_token=?", (session_token,))
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
+    session.clear()
     return redirect(url_for('login'))
 
 # ============================================
@@ -675,16 +948,14 @@ def save_account():
 @login_required
 def preview_checkout():
     user_id = session['user_id']
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("SELECT upi_id, display_name, theme, profile_pic FROM users WHERE user_id=?", (user_id,))
-    row = c.fetchone()
-    conn.close()
+    user_info = get_user(user_id)
     
-    upi_id = row[0] if row and row[0] else "merchant@upi"
-    display_name = row[1] if row and row[1] else "Merchant"
-    theme = request.args.get('theme') or (row[2] if row and row[2] else "default")
-    profile_pic = row[3] if row and len(row)>3 and row[3] else None
+    upi_id = user_info.get('upi_id') or "merchant@upi"
+    display_name = user_info.get('business_name') or user_info.get('display_name') or "Merchant"
+    theme = request.args.get('theme') or user_info.get('theme') or "default"
+    accent_color = request.args.get('accent_color') or user_info.get('accent_color') or "#4f46e5"
+    profile_pic = user_info.get('business_logo') or user_info.get('profile_pic')
+    business_website = user_info.get('business_website') or ""
     
     return render_template('checkout.html',
                            txn_id="FAM12345678",
@@ -692,48 +963,508 @@ def preview_checkout():
                            upi_id=upi_id,
                            display_name=display_name,
                            theme=theme,
+                           accent_color=accent_color,
+                           business_website=business_website,
                            api_key="preview",
                            callback_url="",
                            qr_url="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=merchant@upi&pn=Merchant&am=499",
                            payment_url="#",
-                           profile_pic=profile_pic)
+                           profile_pic=profile_pic,
+                           remaining_seconds=300)
 
 @app.route('/settings')
 @login_required
 def settings():
     user_id = session['user_id']
     user_info = get_user(user_id)
-    return render_template('settings.html', user_info=user_info)
+    active_tab = request.args.get('tab', 'profile')
+    newly_generated_key = session.pop('newly_generated_raw_key', None)
+    
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("""SELECT session_id, ip_address, device_summary, created_at, last_active_at, session_token 
+                 FROM user_sessions 
+                 WHERE user_id=? AND is_active=1 
+                 ORDER BY last_active_at DESC""", (user_id,))
+    active_sessions = c.fetchall()
+    conn.close()
+    
+    return render_template('settings.html', 
+                           user_info=user_info, 
+                           active_tab=active_tab,
+                           active_sessions=active_sessions,
+                           current_session_token=session.get('session_token'),
+                           newly_generated_key=newly_generated_key)
 
-@app.route('/api_docs')
+# 1. PROFILE - IDENTITY & ACCESS
+@app.route('/settings/profile', methods=['POST'])
 @login_required
-def api_docs():
+def settings_profile():
+    if not verify_csrf():
+        return redirect(url_for('settings', tab='profile', error='Security check failed (invalid CSRF). Please try again.'))
+        
+    user_id = session['user_id']
+    display_name = request.form.get('display_name', '').strip() or 'Merchant'
+    username = request.form.get('username', '').strip()
+    email_val = request.form.get('email', '').strip()
+    
+    if not username:
+        return redirect(url_for('settings', tab='profile', error='Username cannot be empty.'))
+        
+    if email_val:
+        if not re.match(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$', email_val):
+            return redirect(url_for('settings', tab='profile', error='Invalid email format.'))
+            
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT user_id FROM users WHERE username=? AND user_id != ?", (username, user_id))
+    if c.fetchone():
+        conn.close()
+        return redirect(url_for('settings', tab='profile', error='Username is already taken by another account.'))
+        
+    if email_val:
+        c.execute("SELECT user_id FROM users WHERE email=? AND user_id != ?", (email_val, user_id))
+        if c.fetchone():
+            conn.close()
+            return redirect(url_for('settings', tab='profile', error='Email address is already in use.'))
+            
+    # Server-side 2MB file limit enforcement
+    file = request.files.get('profile_pic')
+    profile_pic_b64 = None
+    if file and file.filename != '':
+        file_data = file.read()
+        if len(file_data) > 2 * 1024 * 1024:
+            conn.close()
+            return redirect(url_for('settings', tab='profile', error='Profile photo exceeds strict 2MB limit.'))
+        c_type = file.content_type or 'image/jpeg'
+        if not (c_type.startswith('image/jpeg') or c_type.startswith('image/png') or c_type.startswith('image/webp')):
+            conn.close()
+            return redirect(url_for('settings', tab='profile', error='Only JPG or PNG images are allowed.'))
+        profile_pic_b64 = f"data:{c_type};base64," + base64.b64encode(file_data).decode('utf-8')
+        
+    if profile_pic_b64:
+        c.execute("UPDATE users SET display_name=?, username=?, email=?, profile_pic=? WHERE user_id=?", 
+                  (display_name, username, email_val, profile_pic_b64, user_id))
+    else:
+        c.execute("UPDATE users SET display_name=?, username=?, email=? WHERE user_id=?", 
+                  (display_name, username, email_val, user_id))
+    conn.commit()
+    conn.close()
+    
+    return redirect(url_for('settings', tab='profile', success='Profile details updated successfully!'))
+
+@app.route('/settings/request_mobile_otp', methods=['POST'])
+@login_required
+def settings_request_mobile_otp():
+    if not verify_csrf():
+        return jsonify({'status': 'error', 'message': 'CSRF verification failed'}), 403
+        
+    user_id = session['user_id']
+    new_mobile = request.form.get('new_mobile', '').strip()
+    if not re.match(r'^\+?[0-9]{10,13}$', new_mobile):
+        return jsonify({'status': 'error', 'message': 'Invalid mobile number. Must be 10-13 digits.'}), 400
+        
+    otp = f"{secrets.randbelow(900000) + 100000}"
+    expires = (datetime.now() + timedelta(minutes=5)).isoformat()
+    
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("INSERT OR REPLACE INTO mobile_verification_otps (user_id, new_mobile, otp_code, expires_at) VALUES (?, ?, ?, ?)",
+              (user_id, new_mobile, otp, expires))
+    conn.commit()
+    conn.close()
+    
+    add_sys_log(user_id, f"Mobile change OTP requested for {new_mobile}")
+    return jsonify({
+        'status': 'success',
+        'message': f'OTP sent! (Verification Code: {otp})',
+        'dev_otp': otp
+    })
+
+@app.route('/settings/verify_mobile_otp', methods=['POST'])
+@login_required
+def settings_verify_mobile_otp():
+    if not verify_csrf():
+        return jsonify({'status': 'error', 'message': 'CSRF verification failed'}), 403
+        
+    user_id = session['user_id']
+    entered_otp = request.form.get('otp', '').strip()
+    
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT new_mobile, otp_code, expires_at FROM mobile_verification_otps WHERE user_id=?", (user_id,))
+    row = c.fetchone()
+    
+    if not row:
+        conn.close()
+        return jsonify({'status': 'error', 'message': 'No pending OTP verification request found.'}), 400
+        
+    new_mobile, otp_code, expires_at = row
+    if datetime.now() > datetime.fromisoformat(expires_at):
+        c.execute("DELETE FROM mobile_verification_otps WHERE user_id=?", (user_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({'status': 'error', 'message': 'OTP expired. Please request a new verification code.'}), 400
+        
+    if entered_otp != otp_code:
+        conn.close()
+        return jsonify({'status': 'error', 'message': 'Invalid verification code. Please check and retry.'}), 400
+        
+    c.execute("UPDATE users SET mobile=? WHERE user_id=?", (new_mobile, user_id))
+    c.execute("DELETE FROM mobile_verification_otps WHERE user_id=?", (user_id,))
+    conn.commit()
+    conn.close()
+    
+    add_sys_log(user_id, f"Mobile verified & updated to {new_mobile}")
+    return jsonify({'status': 'success', 'message': 'Mobile number verified and updated successfully!'})
+
+@app.route('/settings/change_password', methods=['POST'])
+@login_required
+def settings_change_password():
+    if not verify_csrf():
+        return redirect(url_for('settings', tab='profile', error='Security check failed (invalid CSRF).'))
+        
     user_id = session['user_id']
     user_info = get_user(user_id)
-    return render_template('api_docs.html', user_info=user_info)
+    current_pass = request.form.get('current_password', '')
+    new_pass = request.form.get('new_password', '')
+    confirm_pass = request.form.get('confirm_password', '')
+    
+    if not check_password_hash(user_info['password_hash'], current_pass):
+        return redirect(url_for('settings', tab='profile', error='Current password is incorrect.'))
+        
+    if len(new_pass) < 6:
+        return redirect(url_for('settings', tab='profile', error='New password must be at least 6 characters long.'))
+        
+    if new_pass != confirm_pass:
+        return redirect(url_for('settings', tab='profile', error='New password and confirmation do not match.'))
+        
+    new_hash = generate_password_hash(new_pass)
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("UPDATE users SET password_hash=? WHERE user_id=?", (new_hash, user_id))
+    conn.commit()
+    conn.close()
+    
+    add_sys_log(user_id, "Account password changed.")
+    return redirect(url_for('settings', tab='profile', success='Password updated successfully!'))
+
+# 2. BUSINESS DETAILS - BRANDING
+@app.route('/settings/business', methods=['POST'])
+@login_required
+def settings_business():
+    if not verify_csrf():
+        return redirect(url_for('settings', tab='business', error='Security check failed (invalid CSRF).'))
+        
+    user_id = session['user_id']
+    business_name = request.form.get('business_name', '').strip()
+    business_website = request.form.get('business_website', '').strip()
+    business_support_email = request.form.get('business_support_email', '').strip()
+    
+    if business_website:
+        if not (business_website.startswith('http://') or business_website.startswith('https://')):
+            business_website = 'https://' + business_website
+        try:
+            parsed = urllib.parse.urlparse(business_website)
+            if not parsed.netloc or '.' not in parsed.netloc:
+                return redirect(url_for('settings', tab='business', error='Invalid website URL format.'))
+            try:
+                requests.head(business_website, timeout=2.5, allow_redirects=True)
+            except Exception:
+                add_sys_log(user_id, f"Website reachability notice for {business_website}")
+        except Exception:
+            return redirect(url_for('settings', tab='business', error='Invalid website URL format.'))
+            
+    file = request.files.get('business_logo')
+    logo_b64 = None
+    if file and file.filename != '':
+        file_data = file.read()
+        if len(file_data) > 2 * 1024 * 1024:
+            return redirect(url_for('settings', tab='business', error='Business logo exceeds 2MB limit.'))
+        c_type = file.content_type or 'image/png'
+        if not (c_type.startswith('image/jpeg') or c_type.startswith('image/png') or c_type.startswith('image/webp')):
+            return redirect(url_for('settings', tab='business', error='Only JPG or PNG images are allowed.'))
+        logo_b64 = f"data:{c_type};base64," + base64.b64encode(file_data).decode('utf-8')
+        
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    if logo_b64:
+        c.execute("""UPDATE users SET business_name=?, business_website=?, business_support_email=?, business_logo=? 
+                     WHERE user_id=?""", (business_name, business_website, business_support_email, logo_b64, user_id))
+    else:
+        c.execute("""UPDATE users SET business_name=?, business_website=?, business_support_email=? 
+                     WHERE user_id=?""", (business_name, business_website, business_support_email, user_id))
+    conn.commit()
+    conn.close()
+    
+    return redirect(url_for('settings', tab='business', success='Business branding details saved!'))
+
+# 3. PAYMENT SETTINGS - HARD GATE TTL & REDIRECT WHITELIST
+@app.route('/settings/payment_rules', methods=['POST'])
+@login_required
+def settings_payment_rules():
+    if not verify_csrf():
+        return redirect(url_for('settings', tab='payment', error='Security check failed (invalid CSRF).'))
+        
+    user_id = session['user_id']
+    user_info = get_user(user_id)
+    expiry_mins_raw = request.form.get('payment_expiry_minutes', '5')
+    success_url = request.form.get('success_redirect_url', '').strip()
+    failed_url = request.form.get('failed_redirect_url', '').strip()
+    allowed_domains = request.form.get('allowed_redirect_domains', '').strip()
+    
+    try:
+        expiry_mins = int(expiry_mins_raw)
+        if expiry_mins < 1 or expiry_mins > 1440:
+            expiry_mins = 5
+    except ValueError:
+        expiry_mins = 5
+        
+    domain_list = [d.strip() for d in allowed_domains.split(',') if d.strip()]
+    
+    if success_url:
+        if not is_safe_redirect_url(success_url, domain_list, user_info.get('business_website')):
+            return redirect(url_for('settings', tab='payment', error='Success Redirect URL is not in your verified domains whitelist.'))
+            
+    if failed_url:
+        if not is_safe_redirect_url(failed_url, domain_list, user_info.get('business_website')):
+            return redirect(url_for('settings', tab='payment', error='Failed Redirect URL is not in your verified domains whitelist.'))
+            
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("""UPDATE users SET payment_expiry_minutes=?, success_redirect_url=?, failed_redirect_url=?, allowed_redirect_domains=? 
+                 WHERE user_id=?""", (expiry_mins, success_url, failed_url, allowed_domains, user_id))
+    conn.commit()
+    conn.close()
+    
+    return redirect(url_for('settings', tab='payment', success='Payment rules saved! Expiry TTL is synchronized with payment verification.'))
+
+# 4. API & WEBHOOK
+@app.route('/settings/api_keys/regenerate', methods=['POST'])
+@login_required
+def settings_regenerate_keys():
+    if not verify_csrf():
+        return redirect(url_for('settings', tab='api', error='Security check failed (invalid CSRF).'))
+        
+    user_id = session['user_id']
+    key_type = request.form.get('key_type', 'live').lower()
+    
+    raw_key = f"{key_type}_sk_" + secrets.token_hex(20)
+    key_hash = hashlib.sha256(raw_key.encode('utf-8')).hexdigest()
+    key_hint = "..." + raw_key[-4:]
+    
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    if key_type == 'live':
+        c.execute("UPDATE users SET live_api_key_hash=?, live_api_key_hint=?, api_key=? WHERE user_id=?", 
+                  (key_hash, key_hint, raw_key, user_id))
+    else:
+        c.execute("UPDATE users SET test_api_key_hash=?, test_api_key_hint=? WHERE user_id=?", 
+                  (key_hash, key_hint, user_id))
+    conn.commit()
+    conn.close()
+    
+    session['newly_generated_raw_key'] = {
+        'key': raw_key,
+        'type': key_type.upper()
+    }
+    
+    add_sys_log(user_id, f"{key_type.upper()} API Key regenerated.")
+    return redirect(url_for('settings', tab='api', success=f'{key_type.upper()} API Key generated! Please copy it now.'))
+
+@app.route('/settings/notifications', methods=['POST'])
+@login_required
+def settings_notifications():
+    if not verify_csrf():
+        return redirect(url_for('settings', tab='api', error='Security check failed (invalid CSRF).'))
+        
+    user_id = session['user_id']
+    bot_token = request.form.get('telegram_bot_token', '').strip()
+    chat_id = request.form.get('telegram_chat_id', '').strip()
+    
+    token_enc = encrypt_pass(bot_token) if bot_token else None
+    chat_enc = encrypt_pass(chat_id) if chat_id else None
+    
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("UPDATE users SET telegram_bot_token_enc=?, telegram_chat_id_enc=? WHERE user_id=?", 
+              (token_enc, chat_enc, user_id))
+    conn.commit()
+    conn.close()
+    
+    return redirect(url_for('settings', tab='api', success='Telegram notification credentials encrypted and saved!'))
+
+@app.route('/settings/notifications/test', methods=['POST'])
+@login_required
+def settings_test_notifications():
+    if not verify_csrf():
+        return jsonify({'status': 'error', 'message': 'CSRF verification failed'}), 403
+        
+    user_id = session['user_id']
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT telegram_bot_token_enc, telegram_chat_id_enc, display_name FROM users WHERE user_id=?", (user_id,))
+    row = c.fetchone()
+    conn.close()
+    
+    if not row or not row[0] or not row[1]:
+        return jsonify({'status': 'error', 'message': 'Please save your Telegram Bot Token and Chat ID first.'}), 400
+        
+    token = decrypt_pass(row[0])
+    chat_id = decrypt_pass(row[1])
+    name = row[2] or 'Merchant'
+    
+    try:
+        res = requests.post(f"https://api.telegram.org/bot{token}/sendMessage", json={
+            "chat_id": chat_id,
+            "text": f"🚀 *NovaPay Test Alert*\n\nYour Telegram payment notifications are connected and working perfectly for *{name}*!",
+            "parse_mode": "Markdown"
+        }, timeout=5)
+        data = res.json()
+        if data.get('ok'):
+            return jsonify({'status': 'success', 'message': 'Test notification successfully delivered to your Telegram!'})
+        else:
+            return jsonify({'status': 'error', 'message': data.get('description', 'Telegram API returned error.')}), 400
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f'Failed to connect to Telegram API: {str(e)}'}), 500
+
+# 5. SECURITY - SESSIONS & 2FA
+@app.route('/settings/revoke_session/<session_id>', methods=['POST'])
+@login_required
+def settings_revoke_session(session_id):
+    if not verify_csrf():
+        return redirect(url_for('settings', tab='security', error='Security check failed (invalid CSRF).'))
+        
+    user_id = session['user_id']
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("UPDATE user_sessions SET is_active=0 WHERE session_id=? AND user_id=?", (session_id, user_id))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('settings', tab='security', success='Session revoked successfully.'))
+
+@app.route('/settings/logout_all_sessions', methods=['POST'])
+@login_required
+def settings_logout_all_sessions():
+    if not verify_csrf():
+        return redirect(url_for('settings', tab='security', error='Security check failed (invalid CSRF).'))
+        
+    user_id = session['user_id']
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("UPDATE user_sessions SET is_active=0 WHERE user_id=?", (user_id,))
+    conn.commit()
+    conn.close()
+    session.clear()
+    return redirect(url_for('login', success='You have been signed out from all devices.'))
+
+@app.route('/settings/2fa/setup', methods=['POST'])
+@login_required
+def settings_setup_2fa():
+    if not verify_csrf():
+        return jsonify({'status': 'error', 'message': 'CSRF verification failed'}), 403
+        
+    user_id = session['user_id']
+    user_info = get_user(user_id)
+    secret = generate_totp_secret()
+    session['pending_totp_secret'] = secret
+    
+    totp_uri = f"otpauth://totp/NovaPay:{user_info['username']}?secret={secret}&issuer=NovaPay"
+    
+    qr = qrcode.make(totp_uri)
+    from io import BytesIO
+    buffered = BytesIO()
+    qr.save(buffered, format="PNG")
+    qr_b64 = "data:image/png;base64," + base64.b64encode(buffered.getvalue()).decode("utf-8")
+    
+    return jsonify({
+        "status": "success",
+        "secret": secret,
+        "qr_b64": qr_b64
+    })
+
+@app.route('/settings/2fa/verify', methods=['POST'])
+@login_required
+def settings_verify_2fa():
+    if not verify_csrf():
+        return redirect(url_for('settings', tab='security', error='Security check failed (invalid CSRF).'))
+        
+    user_id = session['user_id']
+    code = request.form.get('code', '').strip()
+    secret = session.get('pending_totp_secret')
+    
+    if not secret:
+        return redirect(url_for('settings', tab='security', error='2FA setup expired. Please click Enable 2FA again.'))
+        
+    if verify_totp_token(secret, code):
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("UPDATE users SET totp_secret_enc=?, totp_enabled=1 WHERE user_id=?", 
+                  (encrypt_pass(secret), user_id))
+        conn.commit()
+        conn.close()
+        session.pop('pending_totp_secret', None)
+        return redirect(url_for('settings', tab='security', success='Two-Factor Authentication successfully activated!'))
+    else:
+        return redirect(url_for('settings', tab='security', error='Invalid 6-digit authenticator code. Please try again.'))
+
+@app.route('/settings/2fa/disable', methods=['POST'])
+@login_required
+def settings_disable_2fa():
+    if not verify_csrf():
+        return redirect(url_for('settings', tab='security', error='Security check failed (invalid CSRF).'))
+        
+    user_id = session['user_id']
+    user_info = get_user(user_id)
+    pwd = request.form.get('password', '')
+    code = request.form.get('code', '').strip()
+    
+    if not check_password_hash(user_info['password_hash'], pwd):
+        return redirect(url_for('settings', tab='security', error='Incorrect password.'))
+        
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT totp_secret_enc FROM users WHERE user_id=?", (user_id,))
+    row = c.fetchone()
+    if row and row[0]:
+        secret = decrypt_pass(row[0])
+        if not verify_totp_token(secret, code):
+            conn.close()
+            return redirect(url_for('settings', tab='security', error='Invalid 2FA code.'))
+            
+    c.execute("UPDATE users SET totp_secret_enc=NULL, totp_enabled=0 WHERE user_id=?", (user_id,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('settings', tab='security', success='Two-Factor Authentication has been disabled.'))
+
+# 6. APPEARANCE
+@app.route('/settings/appearance', methods=['POST'])
+@login_required
+def settings_appearance():
+    if not verify_csrf():
+        return redirect(url_for('settings', tab='appearance', error='Security check failed (invalid CSRF).'))
+        
+    user_id = session['user_id']
+    theme = request.form.get('theme', 'default')
+    accent_color = request.form.get('accent_color', '#4f46e5').strip()
+    layout_density = request.form.get('layout_density', 'comfortable')
+    
+    if not re.match(r'^#[0-9a-fA-F]{6}$', accent_color):
+        accent_color = '#4f46e5'
+        
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("UPDATE users SET theme=?, accent_color=?, layout_density=? WHERE user_id=?", 
+              (theme, accent_color, layout_density, user_id))
+    conn.commit()
+    conn.close()
+    
+    return redirect(url_for('settings', tab='appearance', success='Appearance settings updated!'))
 
 @app.route('/save_customize', methods=['POST'])
 @login_required
 def save_customize():
-    user_id = session['user_id']
-    display_name = request.form.get('display_name', 'Merchant')
-    theme = request.form.get('theme', 'default')
-    
-    file = request.files.get('profile_pic')
-    profile_pic_b64 = None
-    if file and file.filename != '':
-        import base64
-        profile_pic_b64 = "data:" + file.content_type + ";base64," + base64.b64encode(file.read()).decode('utf-8')
-        
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    if profile_pic_b64:
-        c.execute("UPDATE users SET display_name=?, theme=?, profile_pic=? WHERE user_id=?", (display_name, theme, profile_pic_b64, user_id))
-    else:
-        c.execute("UPDATE users SET display_name=?, theme=? WHERE user_id=?", (display_name, theme, user_id))
-    conn.commit()
-    conn.close()
-    return redirect(url_for('settings', success='Customization Saved!'))
+    return redirect(url_for('settings', tab='appearance'))
 
 @app.route('/delete_account')
 @login_required
@@ -868,19 +1599,23 @@ def export_transactions():
 
 @app.route('/api/create-order', methods=['POST'])
 def api_create_order():
-    api_key = request.headers.get('X-Fam-Key') or request.json.get('api_key')
+    api_key = request.headers.get('X-Fam-Key') or request.headers.get('Authorization') or (request.json.get('api_key') if request.is_json else None)
+    if api_key and api_key.startswith('Bearer '):
+        api_key = api_key[7:].strip()
     if not api_key:
-        return jsonify({"status": "error", "message": "Missing X-Fam-Key header"}), 401
+        return jsonify({"status": "error", "message": "Missing API Key header (X-Fam-Key)"}), 401
         
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("SELECT user_id FROM users WHERE api_key = ?", (api_key,))
+    key_hash = hashlib.sha256(api_key.strip().encode('utf-8')).hexdigest()
+    c.execute("SELECT user_id, payment_expiry_minutes FROM users WHERE live_api_key_hash=? OR test_api_key_hash=? OR api_key=?", (key_hash, key_hash, api_key))
     user = c.fetchone()
     if not user:
         conn.close()
         return jsonify({"status": "error", "message": "Invalid API Key"}), 401
     
     user_id = user[0]
+    merchant_ttl = int(user[1]) if len(user) > 1 and user[1] else 5
     data = request.json or {}
     
     amount_raw = data.get('amount')
@@ -903,7 +1638,7 @@ def api_create_order():
 
     txn_id = f"FAM{int(time.time())}{uuid.uuid4().hex[:4].upper()}"
     now = datetime.now()
-    expires = now + timedelta(minutes=5)
+    expires = now + timedelta(minutes=merchant_ttl)
 
     c.execute('''INSERT INTO transactions (txn_id, user_id, amount, status, created_at, expires_at, merchant_order_id, customer_name, callback_url)
                  VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?)''', 
@@ -916,38 +1651,55 @@ def api_create_order():
     return jsonify({
         "status": "success",
         "payment_url": payment_url,
-        "txn_id": txn_id
+        "txn_id": txn_id,
+        "expires_at": expires.isoformat()
     })
 
 @app.route('/pay/<txn_id>', methods=['GET'])
 def checkout_page_by_id(txn_id):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("SELECT user_id, amount, status, callback_url FROM transactions WHERE txn_id = ?", (txn_id,))
+    c.execute("SELECT user_id, amount, status, callback_url, expires_at FROM transactions WHERE txn_id = ?", (txn_id,))
     txn = c.fetchone()
     
     if not txn:
         conn.close()
         return "<h1>Error: Transaction not found</h1>", 404
         
-    user_id, amount, status, callback_url = txn
+    user_id, amount, status, callback_url, expires_at = txn
     
-    c.execute("SELECT upi_id, display_name, theme, api_key, provider FROM users WHERE user_id = ?", (user_id,))
+    c.execute("""SELECT u.upi_id, u.display_name, u.theme, u.api_key, u.provider,
+                        u.business_name, u.business_website, u.business_logo, u.accent_color, u.profile_pic,
+                        u.success_redirect_url, u.failed_redirect_url
+                 FROM users u WHERE u.user_id = ?""", (user_id,))
     user = c.fetchone()
     conn.close()
     
     if not user or not user[0]:
         return "<h1>Error: Merchant account not configured properly</h1>", 400
         
-    upi_id, display_name, theme, api_key, provider = user
+    upi_id, display_name, theme, api_key, provider, b_name, b_web, b_logo, accent_color, prof_pic, succ_url, fail_url = user
+    final_display_name = b_name or display_name or 'Merchant'
+    final_logo = b_logo or prof_pic
+    final_accent = accent_color or '#4f46e5'
+    final_callback = callback_url or succ_url or ''
     
-    payment_url = f"upi://pay?pa={upi_id}&pn=Merchant&tr={txn_id}&am={amount}&cu=INR"
+    payment_url = f"upi://pay?pa={upi_id}&pn={urllib.parse.quote(final_display_name)}&tr={txn_id}&am={amount}&cu=INR"
     
     qr = qrcode.make(payment_url)
     qr_path = f"static/qr_{txn_id}.png"
     os.makedirs("static", exist_ok=True)
     qr.save(qr_path)
     
+    remaining_seconds = 300
+    if expires_at:
+        try:
+            exp_dt = datetime.fromisoformat(expires_at)
+            diff = int((exp_dt - datetime.utcnow()).total_seconds())
+            remaining_seconds = max(0, diff)
+        except Exception:
+            pass
+
     return render_template('checkout.html', 
                            amount=f"{amount:.2f}",
                            txn_id=txn_id,
@@ -955,10 +1707,16 @@ def checkout_page_by_id(txn_id):
                            payment_url=payment_url,
                            qr_url=f"/qr/{txn_id}",
                            upi_id=upi_id,
-                           display_name=display_name or 'Merchant',
+                           display_name=final_display_name,
+                           business_website=b_web or '',
+                           accent_color=final_accent,
+                           profile_pic=final_logo,
                            theme=theme or 'premium',
                            status=status,
-                           callback_url=callback_url,
+                           callback_url=final_callback,
+                           failed_redirect_url=fail_url or '',
+                           expires_at=expires_at,
+                           remaining_seconds=remaining_seconds,
                            provider=provider or 'fampay')
 
 @app.route('/pay', methods=['GET'])
@@ -971,13 +1729,16 @@ def checkout_page_legacy():
 
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("SELECT user_id, upi_id, display_name, theme, provider FROM users WHERE api_key = ?", (api_key,))
+    key_hash = hashlib.sha256(api_key.strip().encode('utf-8')).hexdigest()
+    c.execute("SELECT user_id, upi_id, display_name, theme, provider, payment_expiry_minutes FROM users WHERE live_api_key_hash = ? OR test_api_key_hash = ? OR api_key = ?", (key_hash, key_hash, api_key))
     user = c.fetchone()
     
     if not user or not user[1]:
+        conn.close()
         return "<h1>Error: Invalid API Key or Not Configured</h1>", 401
     
-    user_id, upi_id, display_name, theme, provider = user
+    user_id, upi_id, display_name, theme, provider, merchant_ttl = user
+    merchant_ttl = merchant_ttl if merchant_ttl else 5
 
     try:
         amount = float(amount_raw)
@@ -987,13 +1748,14 @@ def checkout_page_legacy():
             amount += round(random.uniform(0.01, 0.99), 2)
         amount = round(amount, 2)
     except ValueError:
+        conn.close()
         return "<h1>Error: Invalid amount</h1>", 400
 
-    expiry_mins = request.args.get('expiry', '1440')
+    expiry_mins = request.args.get('expiry')
     try:
-        expiry_mins = int(expiry_mins)
+        expiry_mins = int(expiry_mins) if expiry_mins else merchant_ttl
     except ValueError:
-        expiry_mins = 1440
+        expiry_mins = merchant_ttl
 
     txn_id = f"FAM{int(time.time())}{uuid.uuid4().hex[:4].upper()}"
     now = datetime.now()
@@ -1054,7 +1816,8 @@ def verify_api():
     c = conn.cursor()
     
     if api_key:
-        c.execute("SELECT user_id FROM users WHERE api_key = ?", (api_key,))
+        key_hash = hashlib.sha256(api_key.strip().encode('utf-8')).hexdigest()
+        c.execute("SELECT user_id FROM users WHERE live_api_key_hash=? OR test_api_key_hash=? OR api_key=?", (key_hash, key_hash, api_key))
         user = c.fetchone()
         if not user:
             conn.close()
@@ -1167,30 +1930,73 @@ def send_email_receipt(user_id, customer_email, txn_id, amount, utr, date_str):
     except Exception as e:
         print(f"Email failed: {e}")
         
+def send_telegram_alert(user_id, txn_id, amount, utr):
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("SELECT telegram_bot_token_enc, telegram_chat_id_enc, display_name FROM users WHERE user_id=?", (user_id,))
+        row = c.fetchone()
+        conn.close()
+        if row and row[0] and row[1]:
+            token = decrypt_pass(row[0])
+            chat_id = decrypt_pass(row[1])
+            name = row[2] or "Merchant"
+            msg = (f"🔔 *Payment Received!*\n\n"
+                   f"💰 *Amount:* ₹{amount:.2f}\n"
+                   f"🔖 *Txn ID:* `{txn_id}`\n"
+                   f"🏦 *Bank UTR:* `{utr}`\n"
+                   f"🏪 *Store:* {name}\n"
+                   f"⏰ *Date:* {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            requests.post(f"https://api.telegram.org/bot{token}/sendMessage", json={
+                "chat_id": chat_id,
+                "text": msg,
+                "parse_mode": "Markdown"
+            }, timeout=5)
+    except Exception as e:
+        print(f"Telegram alert error: {e}")
+
 def send_webhook(user_id, callback_url, txn_id, merchant_order_id, amount, utr):
     try:
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
-        c.execute("SELECT api_key FROM users WHERE user_id=?", (user_id,))
+        c.execute("SELECT api_key, live_api_key_hash FROM users WHERE user_id=?", (user_id,))
         row = c.fetchone()
         api_key = row[0] if row and row[0] else "default_secret"
+        
+        timestamp = int(time.time())
+        nonce = secrets.token_hex(16)
         
         payload = {
             "status": "success",
             "txn_id": txn_id,
             "merchant_order_id": merchant_order_id,
             "amount": amount,
-            "utr": utr
+            "utr": utr,
+            "timestamp": timestamp,
+            "nonce": nonce
         }
         payload_str = json.dumps(payload)
         
-        # Pro Logic: HMAC-SHA256 Signature for Webhook Security
-        signature = hmac.new(api_key.encode('utf-8'), payload_str.encode('utf-8'), hashlib.sha256).hexdigest()
+        # Pro Logic: HMAC-SHA256 Signature with Timestamp for Webhook Security & Anti-Replay
+        sign_material = f"{timestamp}.{payload_str}"
+        signature = hmac.new(api_key.encode('utf-8'), sign_material.encode('utf-8'), hashlib.sha256).hexdigest()
+        legacy_sig = hmac.new(api_key.encode('utf-8'), payload_str.encode('utf-8'), hashlib.sha256).hexdigest()
+        
         headers = {
             "Content-Type": "application/json",
-            "X-FamGateway-Signature": signature
+            "X-NovaPay-Signature": signature,
+            "X-NovaPay-Timestamp": str(timestamp),
+            "X-NovaPay-Nonce": nonce,
+            "X-FamGateway-Signature": legacy_sig # backward compatibility
         }
         
+        # Record nonce in database
+        try:
+            c.execute("INSERT OR REPLACE INTO webhook_nonces (nonce, created_at) VALUES (?, ?)", (nonce, datetime.now().isoformat()))
+            conn.commit()
+        except Exception:
+            pass
+            
         response_code = 0
         response_body = ""
         try:
@@ -1309,31 +2115,50 @@ def monitor_gmails():
                                 now_str = datetime.now().isoformat()
                                 
                                 # Check if user manually submitted this UTR
-                                c_db.execute("SELECT txn_id, status, callback_url, merchant_order_id FROM transactions WHERE utr=?", (utr,))
+                                c_db.execute("SELECT txn_id, status, callback_url, merchant_order_id, expires_at FROM transactions WHERE utr=?", (utr,))
                                 row = c_db.fetchone()
                                 txn_completed_now = False
                                 
                                 if row:
-                                    if row[1] == 'pending':
-                                        c_db.execute("UPDATE transactions SET status='completed', paid_at=? WHERE txn_id=?", (now_str, row[0]))
+                                    t_id, t_status, t_cb, t_m_id, t_exp = row
+                                    # Hard Gate: Expire order if time crossed
+                                    if t_exp and now_str > t_exp:
+                                        c_db.execute("UPDATE transactions SET status='expired' WHERE txn_id=?", (t_id,))
+                                        conn_db.commit()
+                                        add_sys_log(user_id, f"HARD REJECT: Payment with UTR {utr} arrived after expiry window ({t_exp}). Marked as expired.")
+                                    elif t_status == 'pending':
+                                        c_db.execute("UPDATE transactions SET status='completed', paid_at=? WHERE txn_id=?", (now_str, t_id))
                                         conn_db.commit()
                                         txn_completed_now = True
-                                        completed_txn = row
+                                        completed_txn = (t_id, 'completed', t_cb, t_m_id)
                                 else:
                                     # Amount-based fallback (if UTR not submitted by user yet)
-                                    c_db.execute("SELECT txn_id, callback_url, merchant_order_id FROM transactions WHERE user_id=? AND status='pending' AND ABS(amount - ?) < 0.01 AND (utr IS NULL OR utr='') ORDER BY created_at ASC LIMIT 1", (user_id, amount))
+                                    c_db.execute("""SELECT txn_id, callback_url, merchant_order_id, expires_at 
+                                                    FROM transactions 
+                                                    WHERE user_id=? AND status='pending' AND ABS(amount - ?) < 0.01 
+                                                      AND (utr IS NULL OR utr='') 
+                                                    ORDER BY created_at ASC LIMIT 1""", (user_id, amount))
                                     pending_txn = c_db.fetchone()
                                     if pending_txn:
-                                        c_db.execute("UPDATE transactions SET status='completed', utr=?, paid_at=? WHERE txn_id=?", (utr, now_str, pending_txn[0]))
-                                        conn_db.commit()
-                                        txn_completed_now = True
-                                        completed_txn = (pending_txn[0], 'pending', pending_txn[1], pending_txn[2])
+                                        p_id, p_cb, p_m_id, p_exp = pending_txn
+                                        if p_exp and now_str > p_exp:
+                                            c_db.execute("UPDATE transactions SET status='expired' WHERE txn_id=?", (p_id,))
+                                            conn_db.commit()
+                                            add_sys_log(user_id, f"HARD REJECT: Amount match ₹{amount} arrived after order expiry ({p_exp}). Marked as expired.")
+                                        else:
+                                            c_db.execute("UPDATE transactions SET status='completed', utr=?, paid_at=? WHERE txn_id=?", (utr, now_str, p_id))
+                                            conn_db.commit()
+                                            txn_completed_now = True
+                                            completed_txn = (p_id, 'completed', p_cb, p_m_id)
                                         
                                 conn_db.close()
                                 
-                                # Fire webhook and Email if completed now
+                                # Fire webhook, Telegram alert and Email if completed now
                                 if txn_completed_now:
                                     add_sys_log(user_id, f"Match Success! Verified Txn ID: {completed_txn[0]}")
+                                    
+                                    # Dispatch Instant Telegram Alert
+                                    threading.Thread(target=send_telegram_alert, args=(user_id, completed_txn[0], amount, utr)).start()
                                     
                                     # Fetch email just in case
                                     conn_fetch = sqlite3.connect(DB_FILE)

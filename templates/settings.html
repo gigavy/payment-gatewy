@@ -1,170 +1,1280 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
+
+{% block extra_head %}
+<style>
+    .tab-btn.active {
+        background-color: #4f46e5;
+        color: #ffffff;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+    }
+    .tab-btn:not(.active) {
+        background-color: #ffffff;
+        color: #64748b;
+        border: 1px solid #e2e8f0;
+    }
+    .tab-btn:not(.active):hover {
+        background-color: #f8fafc;
+        color: #1e293b;
+    }
+    .unsaved-bar {
+        transform: translateY(150%);
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .unsaved-bar.visible {
+        transform: translateY(0);
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="mb-6">
-    <h1 class="text-2xl font-bold text-slate-800">Account Settings</h1>
-    <p class="text-sm font-medium text-slate-500 mt-1">Manage your login credentials, brand profile, and checkout theme.</p>
-</div>
+<div class="max-w-7xl mx-auto pb-24">
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-    
-    <!-- Credentials Form -->
-    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 mb-8">
-        <h3 class="text-base font-bold text-slate-800 mb-6">Login Credentials</h3>
-        <form action="/update_credentials" method="POST">
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-2">Username</label>
-                    <input type="text" name="username" required value="{{ user_info.username if user_info else '' }}" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:bg-white outline-none transition-all text-sm font-medium text-slate-800">
-                </div>
-                <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-2">New Password (leave blank to keep current)</label>
-                    <input type="password" name="password" placeholder="Enter new password" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:bg-white outline-none transition-all text-sm font-medium text-slate-800">
-                </div>
-                <button type="submit" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-colors shadow-sm mt-2">
-                    Update Credentials
-                </button>
+    <!-- Page Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+            <div class="flex items-center gap-3 mb-1">
+                <h1 class="text-2xl font-black text-slate-800 tracking-tight">Gateway Settings</h1>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Production Grade
+                </span>
             </div>
-        </form>
+            <p class="text-sm font-medium text-slate-500">Manage identity, payment TTL rules, API security keys, webhooks, and checkout appearance.</p>
+        </div>
+
+        <!-- Quick Status Pills -->
+        <div class="flex flex-wrap items-center gap-2">
+            {% if user_info and user_info.totp_enabled %}
+            <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-700">
+                <i class="fa-solid fa-shield-halved"></i> 2FA Active
+            </div>
+            {% else %}
+            <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-xs font-bold text-amber-700">
+                <i class="fa-solid fa-triangle-exclamation"></i> 2FA Recommended
+            </div>
+            {% endif %}
+
+            {% if user_info and user_info.telegram_configured %}
+            <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-50 border border-sky-200 text-xs font-bold text-sky-700">
+                <i class="fa-brands fa-telegram"></i> Telegram Alerts On
+            </div>
+            {% endif %}
+        </div>
     </div>
 
-    <!-- Form -->
-    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-        <h3 class="text-base font-bold text-slate-800 mb-6">Brand Settings</h3>
-        <form action="/save_customize" method="POST" enctype="multipart/form-data">
+    <!-- One-Time API Key Banner (If just regenerated) -->
+    {% if newly_generated_key %}
+    <div class="mb-8 p-5 bg-amber-50 border-2 border-amber-300 rounded-2xl shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 text-lg shadow-sm">
+                <i class="fa-solid fa-key"></i>
+            </div>
+            <div>
+                <h4 class="text-sm font-bold text-amber-900">New {{ newly_generated_key.type }} API Key Generated</h4>
+                <p class="text-xs text-amber-700 mt-0.5">Copy this key now. For maximum security, raw secrets are hashed via SHA-256 and cannot be shown again.</p>
+                <div class="mt-2 flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-amber-200 font-mono text-xs font-bold text-slate-800 select-all">
+                    <span id="newKeyText">{{ newly_generated_key.key }}</span>
+                </div>
+            </div>
+        </div>
+        <button onclick="copyToClipboard('newKeyText', this)" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-sm shrink-0">
+            <i class="fa-regular fa-copy"></i> Copy Key
+        </button>
+    </div>
+    {% endif %}
+
+    <!-- Tabs Navigation Bar -->
+    <div class="flex items-center gap-2 overflow-x-auto pb-3 mb-6 no-scrollbar border-b border-slate-200">
+        <button onclick="switchTab('profile')" id="tab-nav-profile" class="tab-btn active px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shrink-0 transition">
+            <i class="fa-solid fa-user-gear"></i> Profile & Identity
+        </button>
+        <button onclick="switchTab('business')" id="tab-nav-business" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shrink-0 transition">
+            <i class="fa-solid fa-briefcase"></i> Business Details
+        </button>
+        <button onclick="switchTab('payment')" id="tab-nav-payment" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shrink-0 transition">
+            <i class="fa-solid fa-indian-rupee-sign"></i> Payment & TTL Rules
+        </button>
+        <button onclick="switchTab('api')" id="tab-nav-api" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shrink-0 transition">
+            <i class="fa-solid fa-code"></i> API & Webhooks
+        </button>
+        <button onclick="switchTab('security')" id="tab-nav-security" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shrink-0 transition">
+            <i class="fa-solid fa-shield-cat"></i> Security & Sessions
+        </button>
+        <button onclick="switchTab('appearance')" id="tab-nav-appearance" class="tab-btn px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shrink-0 transition">
+            <i class="fa-solid fa-palette"></i> Checkout Appearance
+        </button>
+    </div>
+
+    <!-- ==================== TAB 1: PROFILE ==================== -->
+    <div id="tab-content-profile" class="tab-pane">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Left: Profile Details Form -->
+            <div class="lg:col-span-2 space-y-6">
+                <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-100">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-800">Merchant Profile</h3>
+                            <p class="text-xs text-slate-500 mt-0.5">Personal details and gateway account identification.</p>
+                        </div>
+                        <span class="text-xs font-mono font-bold px-2.5 py-1 rounded bg-slate-100 text-slate-600">ID: {{ user_info.user_id }}</span>
+                    </div>
+
+                    <form id="profileForm" action="/settings/profile" method="POST" enctype="multipart/form-data" class="space-y-6">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+                        <!-- Avatar Picker -->
+                        <div class="flex items-center gap-5 p-4 rounded-xl bg-slate-50 border border-slate-200/60">
+                            <div class="w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow bg-indigo-50 flex items-center justify-center shrink-0">
+                                {% if user_info and user_info.profile_pic %}
+                                    <img src="{{ user_info.profile_pic }}" alt="Avatar" class="w-full h-full object-cover">
+                                {% else %}
+                                    <span class="text-xl font-black text-primary">{{ user_info.display_name[:1].upper() if user_info and user_info.display_name else 'M' }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Avatar Photo</label>
+                                <input type="file" name="profile_pic" accept="image/png,image/jpeg,image/webp" class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary file:text-white hover:file:bg-indigo-700 transition cursor-pointer">
+                                <p class="text-[11px] text-slate-400 mt-1">Capped at 2MB (JPG, PNG, WebP). Enforced strictly server-side.</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Display Name</label>
+                                <input type="text" name="display_name" value="{{ user_info.display_name if user_info else '' }}" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition" placeholder="e.g. John Doe">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Username</label>
+                                <input type="text" name="username" value="{{ user_info.username if user_info else '' }}" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition" placeholder="e.g. johndoe">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Email Address</label>
+                            <input type="email" name="email" value="{{ user_info.email if user_info else '' }}" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition" placeholder="name@business.com">
+                            <p class="text-[11px] text-slate-400 mt-1">Validated for correct format and uniqueness across merchant accounts.</p>
+                        </div>
+
+                        <div class="pt-2 flex justify-end">
+                            <button type="submit" class="px-6 py-3 bg-primary hover:bg-indigo-700 text-white font-bold rounded-xl text-sm transition shadow-sm flex items-center gap-2">
+                                <i class="fa-solid fa-floppy-disk"></i> Save Profile Details
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Right: Mobile OTP & Change Password Cards -->
             <div class="space-y-6">
-                <!-- Profile Picture -->
-                <div class="flex items-center gap-4">
-                    <div class="w-16 h-16 rounded-full overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0">
-                        {% if user_info and user_info.profile_pic %}
-                            <img src="{{ user_info.profile_pic }}" class="w-full h-full object-cover">
+                
+                <!-- Mobile Verification Card -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-sm">
+                                <i class="fa-solid fa-phone"></i>
+                            </div>
+                            <h4 class="text-sm font-bold text-slate-800">Mobile Verification</h4>
+                        </div>
+                        {% if user_info and user_info.mobile %}
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">Verified</span>
                         {% else %}
-                            <i class="fa-solid fa-camera text-slate-400 text-xl"></i>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">Action Required</span>
                         {% endif %}
                     </div>
-                    <div class="flex-1">
-                        <label class="block text-sm font-bold text-slate-700 mb-1">Profile Photo</label>
-                        <input type="file" name="profile_pic" accept="image/*" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-indigo-50 file:text-primary hover:file:bg-indigo-100 transition-all cursor-pointer">
-                        <p class="text-[11px] text-slate-400 mt-1">Shown on specific templates (JPG, PNG)</p>
+
+                    <p class="text-xs text-slate-500 mb-4">Your mobile number is used as a verified emergency recovery path. Any change requires OTP confirmation.</p>
+
+                    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 mb-4">
+                        <div class="text-[11px] text-slate-400 font-medium">Registered Number</div>
+                        <div class="text-sm font-mono font-bold text-slate-800 mt-0.5">
+                            {{ user_info.mobile if user_info and user_info.mobile else 'Not yet verified' }}
+                        </div>
                     </div>
+
+                    <button type="button" onclick="openMobileOtpModal()" class="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-mobile-screen"></i> Update with OTP Verification
+                    </button>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-2">Display Name</label>
-                    <input type="text" name="display_name" value="{{ user_info.display_name if user_info and user_info.display_name else 'Merchant' }}" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all shadow-sm" placeholder="e.g. My Awesome Shop">
-                </div>
-                
-                <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-3">Checkout Theme <span class="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded-full ml-2">4 New Themes</span></label>
-                    <div class="grid grid-cols-2 gap-3">
-                        
-                        <!-- Theme 1: Default Light -->
-                        <label class="border rounded-xl p-3 cursor-pointer flex items-center gap-3 transition-all {% if not user_info or user_info.theme == 'default' %}border-primary bg-indigo-50 ring-2 ring-primary ring-offset-1{% else %}border-slate-200{% endif %}" onclick="selectTheme(this, 'default')">
-                            <input type="radio" name="theme" value="default" class="hidden" {% if not user_info or user_info.theme == 'default' %}checked{% endif %}>
-                            <div class="w-8 h-8 rounded-md bg-white border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-                                <div class="w-full h-3 bg-primary"></div>
-                                <div class="flex-1 w-full bg-white flex items-center justify-center"><div class="w-4 h-4 rounded-sm bg-slate-100"></div></div>
-                            </div>
-                            <div>
-                                <span class="block text-sm font-bold text-slate-700 leading-tight">Nova Light</span>
-                                <span class="block text-[10px] text-slate-500">Standard</span>
-                            </div>
-                        </label>
-
-                        <!-- Theme 2: Premium Dark -->
-                        <label class="border rounded-xl p-3 cursor-pointer flex items-center gap-3 transition-all {% if user_info and user_info.theme == 'premium' %}border-primary bg-indigo-50 ring-2 ring-primary ring-offset-1{% else %}border-slate-200{% endif %}" onclick="selectTheme(this, 'premium')">
-                            <input type="radio" name="theme" value="premium" class="hidden" {% if user_info and user_info.theme == 'premium' %}checked{% endif %}>
-                            <div class="w-8 h-8 rounded-md bg-slate-900 border border-slate-700 shadow-sm flex flex-col overflow-hidden">
-                                <div class="w-full h-3 bg-slate-800 border-b border-slate-700"></div>
-                                <div class="flex-1 w-full flex items-center justify-center"><div class="w-4 h-4 rounded-sm bg-slate-800"></div></div>
-                            </div>
-                            <div>
-                                <span class="block text-sm font-bold text-slate-700 leading-tight">Nova Dark</span>
-                                <span class="block text-[10px] text-slate-500">Premium</span>
-                            </div>
-                        </label>
-                        
-                        <!-- Theme 3: Clean White (GuruPay) -->
-                        <label class="border rounded-xl p-3 cursor-pointer flex items-center gap-3 transition-all {% if user_info and user_info.theme == 'clean' %}border-primary bg-indigo-50 ring-2 ring-primary ring-offset-1{% else %}border-slate-200{% endif %}" onclick="selectTheme(this, 'clean')">
-                            <input type="radio" name="theme" value="clean" class="hidden" {% if user_info and user_info.theme == 'clean' %}checked{% endif %}>
-                            <div class="w-8 h-8 rounded-md bg-white border border-slate-200 shadow-sm flex flex-col items-center justify-center p-1 gap-1">
-                                <div class="w-2.5 h-2.5 rounded-full bg-slate-300"></div>
-                                <div class="w-5 h-4 bg-slate-100 rounded-sm"></div>
-                            </div>
-                            <div>
-                                <span class="block text-sm font-bold text-slate-700 leading-tight">Clean White</span>
-                                <span class="block text-[10px] text-slate-500">With Photo</span>
-                            </div>
-                        </label>
-                        
-                        <!-- Theme 4: Modern Gradient -->
-                        <label class="border rounded-xl p-3 cursor-pointer flex items-center gap-3 transition-all {% if user_info and user_info.theme == 'gradient' %}border-primary bg-indigo-50 ring-2 ring-primary ring-offset-1{% else %}border-slate-200{% endif %}" onclick="selectTheme(this, 'gradient')">
-                            <input type="radio" name="theme" value="gradient" class="hidden" {% if user_info and user_info.theme == 'gradient' %}checked{% endif %}>
-                            <div class="w-8 h-8 rounded-md bg-gradient-to-br from-indigo-500 to-purple-600 shadow-sm flex items-center justify-center p-1">
-                                <div class="w-5 h-6 bg-white/20 rounded-sm backdrop-blur-sm border border-white/30"></div>
-                            </div>
-                            <div>
-                                <span class="block text-sm font-bold text-slate-700 leading-tight">Gradient</span>
-                                <span class="block text-[10px] text-slate-500">Vibrant</span>
-                            </div>
-                        </label>
-
+                <!-- Change Password Card (Isolated flow) -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                    <div class="flex items-center gap-2.5 mb-4">
+                        <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center font-bold text-sm">
+                            <i class="fa-solid fa-lock"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-bold text-slate-800">Change Password</h4>
+                            <p class="text-[11px] text-slate-400">Separate flow requiring current password</p>
+                        </div>
                     </div>
+
+                    <form id="passwordForm" action="/settings/change_password" method="POST" class="space-y-3.5">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Current Password</label>
+                            <input type="password" name="current_password" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition" placeholder="••••••••">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">New Password (min 6 chars)</label>
+                            <input type="password" name="new_password" required minlength="6" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition" placeholder="••••••••">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Confirm New Password</label>
+                            <input type="password" name="confirm_password" required minlength="6" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition" placeholder="••••••••">
+                        </div>
+
+                        <button type="submit" class="w-full mt-2 py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
+                            <i class="fa-solid fa-key"></i> Update Password
+                        </button>
+                    </form>
                 </div>
-                
-                <button type="submit" class="w-full bg-primary hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-colors shadow-sm">
-                    Save Changes
-                </button>
+
             </div>
-        </form>
-    </div>
-    
-    <!-- Live Preview -->
-    <div class="bg-slate-100 rounded-3xl p-4 lg:p-8 flex items-center justify-center border border-slate-200 relative overflow-hidden h-[800px]">
-        <div class="absolute top-4 left-4 bg-white/80 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-slate-500 shadow-sm border border-slate-200 z-10 flex items-center gap-2">
-            <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-            Live Preview
         </div>
-        
-        <div class="w-full max-w-[360px] h-[720px] bg-white rounded-[2.5rem] shadow-2xl border-[8px] border-slate-800 overflow-hidden relative">
-            <!-- Notch -->
-            <div class="absolute top-0 inset-x-0 h-6 bg-slate-800 rounded-b-3xl w-40 mx-auto z-20"></div>
-            <!-- Iframe -->
-            <iframe id="previewIframe" src="/preview_checkout" class="w-full h-full border-0 bg-slate-50"></iframe>
+    </div>
+
+    <!-- ==================== TAB 2: BUSINESS DETAILS ==================== -->
+    <div id="tab-content-business" class="tab-pane hidden">
+        <div class="max-w-3xl bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-100">
+            <div class="mb-6">
+                <h3 class="text-base font-bold text-slate-800">Public Business Details</h3>
+                <p class="text-xs text-slate-500 mt-0.5">These customer-facing details feed directly into your dynamic checkout page and payment receipts.</p>
+            </div>
+
+            <form id="businessForm" action="/settings/business" method="POST" enctype="multipart/form-data" class="space-y-6">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+                <!-- Business Logo Preview & Upload -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Checkout Business Logo</label>
+                    <div class="flex items-center gap-5 p-4 rounded-xl bg-slate-50 border border-slate-200/60">
+                        <div class="w-20 h-20 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center overflow-hidden p-2 shrink-0">
+                            {% if user_info and user_info.business_logo %}
+                                <img src="{{ user_info.business_logo }}" alt="Logo" class="max-w-full max-h-full object-contain">
+                            {% else %}
+                                <i class="fa-solid fa-store text-2xl text-slate-300"></i>
+                            {% endif %}
+                        </div>
+                        <div class="flex-1">
+                            <input type="file" name="business_logo" accept="image/png,image/jpeg,image/webp" class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary file:text-white hover:file:bg-indigo-700 transition cursor-pointer">
+                            <p class="text-[11px] text-slate-400 mt-1.5">Recommended 1:1 square or 4:3 ratio. Capped at 2MB. Displayed prominently on customer payment screens.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Public Business Name</label>
+                    <input type="text" name="business_name" value="{{ user_info.business_name if user_info else '' }}" required class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition" placeholder="e.g. Acme Payments Pvt Ltd">
+                    <p class="text-[11px] text-slate-400 mt-1">Rendered above the order amount and in UPI payment reference headers.</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Business Website</label>
+                    <div class="relative">
+                        <input type="url" name="business_website" value="{{ user_info.business_website if user_info else '' }}" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition pl-10" placeholder="https://example.com">
+                        <i class="fa-solid fa-globe absolute left-3.5 top-3.5 text-slate-400"></i>
+                    </div>
+                    <div class="mt-2 flex items-start gap-2 text-[11px] text-slate-500">
+                        <i class="fa-solid fa-circle-check text-emerald-500 mt-0.5"></i>
+                        <span>Must resolve via HTTP/HTTPS. The gateway actively pings this domain upon saving to prevent broken customer links.</span>
+                    </div>
+                </div>
+
+                <div class="pt-4 flex justify-end">
+                    <button type="submit" class="px-6 py-3 bg-primary hover:bg-indigo-700 text-white font-bold rounded-xl text-sm transition shadow-sm flex items-center gap-2">
+                        <i class="fa-solid fa-check"></i> Save Business Identity
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== TAB 3: PAYMENT & TTL RULES ==================== -->
+    <div id="tab-content-payment" class="tab-pane hidden">
+        <div class="max-w-3xl space-y-6">
+            
+            <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-100">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-lg">
+                        <i class="fa-solid fa-clock"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800">Hard Payment Expiry & Money Safety</h3>
+                        <p class="text-xs text-slate-500">Real-time payment TTL enforcement in IMAP monitor and order processing.</p>
+                    </div>
+                </div>
+
+                <form id="paymentRulesForm" action="/settings/payment_rules" method="POST" class="space-y-6">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+                    <!-- Expiry Window -->
+                    <div class="p-5 rounded-2xl bg-amber-50/70 border border-amber-200/80">
+                        <label class="block text-xs font-bold text-amber-900 uppercase tracking-wider mb-2">Transaction Expiry Window (TTL)</label>
+                        <div class="flex items-center gap-3">
+                            <input type="number" name="payment_expiry_minutes" min="1" max="60" value="{{ user_info.payment_expiry_minutes if user_info and user_info.payment_expiry_minutes else 5 }}" required class="w-32 px-4 py-2.5 bg-white border border-amber-300 rounded-xl text-base font-black text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 transition">
+                            <span class="text-sm font-bold text-amber-800">Minutes</span>
+                        </div>
+                        <div class="mt-3 flex items-start gap-2.5 text-xs text-amber-800 leading-relaxed">
+                            <i class="fa-solid fa-shield-halved text-amber-600 mt-0.5 text-sm shrink-0"></i>
+                            <span><strong>Hard Server Gate:</strong> If a customer sends money after this window has passed, the IMAP Gmail monitor will <em>reject and flag</em> the transaction as <code class="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold">expired</code> rather than auto-crediting. This eliminates late-credit exploits.</span>
+                        </div>
+                    </div>
+
+                    <!-- Domain Whitelist -->
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Allowed Redirect Domains (Phishing Protection)</label>
+                            <span class="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">Anti-Open Redirect</span>
+                        </div>
+                        <textarea name="allowed_redirect_domains" rows="3" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition" placeholder="e.g. myshop.com, checkout.myshop.com, portal.partner.in">{{ user_info.allowed_redirect_domains if user_info and user_info.allowed_redirect_domains else '' }}</textarea>
+                        <p class="text-[11px] text-slate-400 mt-1.5">Comma or newline separated. Any redirect URL returned or passed through the API must match your registered website domain or this whitelist.</p>
+                    </div>
+
+                    <!-- Default Success & Failed URLs -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Default Success Callback URL</label>
+                            <input type="url" name="success_redirect_url" value="{{ user_info.success_redirect_url if user_info and user_info.success_redirect_url else '' }}" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition" placeholder="https://myshop.com/pay/success">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Default Failed / Cancel URL</label>
+                            <input type="url" name="failed_redirect_url" value="{{ user_info.failed_redirect_url if user_info and user_info.failed_redirect_url else '' }}" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition" placeholder="https://myshop.com/pay/cancelled">
+                        </div>
+                    </div>
+
+                    <div class="pt-4 flex justify-end">
+                        <button type="submit" class="px-6 py-3 bg-primary hover:bg-indigo-700 text-white font-bold rounded-xl text-sm transition shadow-sm flex items-center gap-2">
+                            <i class="fa-solid fa-lock"></i> Save Money Safety Rules
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ==================== TAB 4: API & WEBHOOKS ==================== -->
+    <div id="tab-content-api" class="tab-pane hidden">
+        <div class="space-y-8 max-w-4xl">
+            
+            <!-- API Keys Section -->
+            <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-100">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800">Merchant API Keys</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Stored as cryptographic SHA-256 hashes. Raw keys are only shown once during creation.</p>
+                    </div>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700">
+                        <i class="fa-solid fa-fingerprint"></i> SHA-256 Hashed
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    <!-- Live Key Card -->
+                    <div class="p-5 rounded-2xl border border-slate-200 bg-slate-50 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Live Secret Key
+                                </span>
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700">Production</span>
+                            </div>
+                            <div class="p-3 bg-white rounded-xl border border-slate-200 font-mono text-xs text-slate-700 mb-3 flex items-center justify-between">
+                                <span>live_sk_••••••••••••{{ user_info.live_api_key_hint if user_info and user_info.live_api_key_hint else '••••' }}</span>
+                                <i class="fa-solid fa-shield text-slate-300"></i>
+                            </div>
+                            <p class="text-[11px] text-slate-400 leading-relaxed">Used for authenticating real orders via <code class="font-mono text-slate-600">/api/create-order</code>.</p>
+                        </div>
+                        <div class="mt-4 pt-4 border-t border-slate-200/80">
+                            <button type="button" onclick="confirmRegenerateKey('live')" class="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-rotate"></i> Regenerate Live Key
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Test Key Card -->
+                    <div class="p-5 rounded-2xl border border-slate-200 bg-slate-50 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-amber-500"></span> Sandbox Test Key
+                                </span>
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-700">Staging</span>
+                            </div>
+                            <div class="p-3 bg-white rounded-xl border border-slate-200 font-mono text-xs text-slate-700 mb-3 flex items-center justify-between">
+                                <span>test_sk_••••••••••••{{ user_info.test_api_key_hint if user_info and user_info.test_api_key_hint else '••••' }}</span>
+                                <i class="fa-solid fa-vial text-slate-300"></i>
+                            </div>
+                            <p class="text-[11px] text-slate-400 leading-relaxed">Simulate order creation without triggering live UPI monitor events.</p>
+                        </div>
+                        <div class="mt-4 pt-4 border-t border-slate-200/80">
+                            <button type="button" onclick="confirmRegenerateKey('test')" class="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-rotate"></i> Regenerate Test Key
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Telegram Alerts & Bot Settings -->
+            <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-100">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-sky-50 text-sky-500 flex items-center justify-center font-bold text-lg">
+                            <i class="fa-brands fa-telegram"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold text-slate-800">Instant Telegram Payment Alerts</h3>
+                            <p class="text-xs text-slate-500 mt-0.5">Get real-time transaction notifications in your private Telegram channel or chat.</p>
+                        </div>
+                    </div>
+                    <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-indigo-50 text-primary border border-indigo-100">
+                        <i class="fa-solid fa-lock"></i> Fernet Encrypted
+                    </span>
+                </div>
+
+                <form id="telegramForm" action="/settings/notifications" method="POST" class="space-y-5">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Telegram Bot Token</label>
+                            <input type="password" name="telegram_bot_token" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition" placeholder="123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ">
+                            <p class="text-[11px] text-slate-400 mt-1">Obtained from @BotFather. Encrypted with AES/Fernet in DB.</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Telegram Chat / Channel ID</label>
+                            <input type="text" name="telegram_chat_id" value="{{ user_info.telegram_chat_id if user_info and user_info.telegram_chat_id else '' }}" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition" placeholder="e.g. 102938475 or -100123456789">
+                            <p class="text-[11px] text-slate-400 mt-1">Obtained from @userinfobot or channel info.</p>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 flex flex-wrap items-center justify-between gap-4">
+                        <button type="button" onclick="sendTestTelegramAlert()" id="testTgBtn" class="px-4 py-2.5 bg-sky-50 hover:bg-sky-100 text-sky-700 font-bold rounded-xl text-xs transition border border-sky-200 flex items-center gap-2">
+                            <i class="fa-solid fa-paper-plane"></i> Send Test Notification
+                        </button>
+
+                        <button type="submit" class="px-6 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs transition shadow-sm flex items-center gap-2">
+                            <i class="fa-solid fa-floppy-disk"></i> Save Telegram Config
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Webhook Signing & Tamper-Proofing Reference -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                <div class="flex items-center gap-2.5 mb-3">
+                    <i class="fa-solid fa-shield-check text-emerald-500 text-base"></i>
+                    <h4 class="text-sm font-bold text-slate-800">Webhook Replay Protection & HMAC Signatures</h4>
+                </div>
+                <p class="text-xs text-slate-500 leading-relaxed mb-4">Every outgoing payment notification is cryptographically signed using HMAC-SHA256. Replay attacks are rejected using nonces and a 300-second timestamp drift window.</p>
+                <div class="bg-slate-900 text-slate-200 rounded-xl p-4 font-mono text-[11px] overflow-x-auto space-y-1">
+                    <div class="text-slate-500">// Header verification specification:</div>
+                    <div><span class="text-indigo-400">X-NovaPay-Signature:</span> t=1694520000,v1=5d41402abc4b2a76b9719d911017c592...</div>
+                    <div><span class="text-indigo-400">X-NovaPay-Timestamp:</span> 1694520000</div>
+                    <div><span class="text-indigo-400">X-NovaPay-Nonce:</span> 3fa85f64-5717-4562-b3fc-2c963f66afa6</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ==================== TAB 5: SECURITY & SESSIONS ==================== -->
+    <div id="tab-content-security" class="tab-pane hidden">
+        <div class="space-y-8 max-w-4xl">
+            
+            <!-- Two-Factor Authentication (TOTP) Card -->
+            <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-100">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-indigo-50 text-primary flex items-center justify-center font-bold text-lg">
+                            <i class="fa-solid fa-shield-halved"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold text-slate-800">Two-Factor Authentication (TOTP)</h3>
+                            <p class="text-xs text-slate-500">Protect merchant balance and payout settings with RFC 6238 authenticator apps.</p>
+                        </div>
+                    </div>
+
+                    {% if user_info and user_info.totp_enabled %}
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <i class="fa-solid fa-circle-check"></i> 2FA Enabled
+                        </span>
+                    {% else %}
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                            <i class="fa-solid fa-circle-xmark"></i> Not Enabled
+                        </span>
+                    {% endif %}
+                </div>
+
+                {% if user_info and user_info.totp_enabled %}
+                <div class="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div class="text-xs text-emerald-900 leading-relaxed">
+                        <strong>Your merchant account is actively protected.</strong> A 6-digit TOTP code from Google Authenticator or 1Password is required at every sign-in.
+                    </div>
+                    <button type="button" onclick="disable2FA()" class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl text-xs border border-rose-200 transition shrink-0">
+                        Disable 2FA
+                    </button>
+                </div>
+                {% else %}
+                <div class="p-5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-800">Setup Authenticator App</h4>
+                        <p class="text-xs text-slate-500 mt-0.5">Compatible with Google Authenticator, Microsoft Authenticator, and Authy.</p>
+                    </div>
+                    <button type="button" onclick="start2FASetup()" class="px-5 py-2.5 bg-primary hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition shadow-sm shrink-0 flex items-center gap-2">
+                        <i class="fa-solid fa-qrcode"></i> Setup TOTP 2FA
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Active Sessions & Device Audit -->
+            <div class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-100">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800">Active Device Sessions</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Track IP addresses, browsers, and revoke unauthorized access immediately.</p>
+                    </div>
+
+                    <button type="button" onclick="logoutAllSessions()" class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl text-xs border border-rose-200 transition flex items-center gap-2">
+                        <i class="fa-solid fa-power-off"></i> Revoke All Other Devices
+                    </button>
+                </div>
+
+                <div class="divide-y divide-slate-100">
+                    {% for sess in active_sessions %}
+                    <div class="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div class="flex items-start gap-3.5">
+                            <div class="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-base shrink-0 mt-0.5">
+                                {% if 'Mobile' in sess[2] or 'iPhone' in sess[2] or 'Android' in sess[2] %}
+                                    <i class="fa-solid fa-mobile-screen"></i>
+                                {% else %}
+                                    <i class="fa-solid fa-laptop"></i>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm font-bold text-slate-800">{{ sess[2] }}</span>
+                                    {% if sess[5] == current_session_token %}
+                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">This Device</span>
+                                    {% endif %}
+                                </div>
+                                <div class="text-xs text-slate-400 mt-0.5 font-mono flex flex-wrap items-center gap-x-3 gap-y-1">
+                                    <span>IP: {{ sess[1] }}</span>
+                                    <span>•</span>
+                                    <span>Last Active: {{ sess[4][:16].replace('T', ' ') }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if sess[5] != current_session_token %}
+                        <button type="button" onclick="revokeSession('{{ sess[0] }}')" class="px-3 py-1.5 bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 rounded-lg text-xs font-bold transition self-end sm:self-center">
+                            Revoke
+                        </button>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div class="py-6 text-center text-xs text-slate-400">No other active sessions recorded.</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ==================== TAB 6: APPEARANCE & LIVE PREVIEW ==================== -->
+    <div id="tab-content-appearance" class="tab-pane hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            <!-- Left Controls: 7 Columns -->
+            <div class="lg:col-span-7 bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-100">
+                <div class="mb-6">
+                    <h3 class="text-base font-bold text-slate-800">Checkout Look & Brand Experience</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">Customise your payment sheet with real-time responsive preview.</p>
+                </div>
+
+                <form id="appearanceForm" action="/settings/appearance" method="POST" class="space-y-6">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+                    <!-- Theme Selection -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">Preset Theme Style</label>
+                        <div class="grid grid-cols-2 gap-3.5">
+                            
+                            <!-- Nova Light -->
+                            <label class="border rounded-2xl p-3.5 cursor-pointer flex items-center gap-3 transition-all {% if not user_info or user_info.theme == 'default' %}border-primary bg-indigo-50/50 ring-2 ring-primary ring-offset-1{% else %}border-slate-200 hover:border-slate-300{% endif %}" onclick="selectAppearanceTheme(this, 'default')">
+                                <input type="radio" name="theme" value="default" class="hidden" {% if not user_info or user_info.theme == 'default' %}checked{% endif %}>
+                                <div class="w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-sm flex flex-col overflow-hidden shrink-0">
+                                    <div class="w-full h-3.5 bg-primary"></div>
+                                    <div class="flex-1 w-full bg-slate-50 flex items-center justify-center"><div class="w-4 h-4 rounded bg-white shadow-xs"></div></div>
+                                </div>
+                                <div>
+                                    <span class="block text-xs font-bold text-slate-800">Nova Light</span>
+                                    <span class="block text-[10px] text-slate-400">Clean & standard</span>
+                                </div>
+                            </label>
+
+                            <!-- Nova Dark -->
+                            <label class="border rounded-2xl p-3.5 cursor-pointer flex items-center gap-3 transition-all {% if user_info and user_info.theme == 'premium' %}border-primary bg-indigo-50/50 ring-2 ring-primary ring-offset-1{% else %}border-slate-200 hover:border-slate-300{% endif %}" onclick="selectAppearanceTheme(this, 'premium')">
+                                <input type="radio" name="theme" value="premium" class="hidden" {% if user_info and user_info.theme == 'premium' %}checked{% endif %}>
+                                <div class="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700 shadow-sm flex flex-col overflow-hidden shrink-0">
+                                    <div class="w-full h-3.5 bg-slate-800 border-b border-slate-700"></div>
+                                    <div class="flex-1 w-full flex items-center justify-center"><div class="w-4 h-4 rounded bg-slate-800"></div></div>
+                                </div>
+                                <div>
+                                    <span class="block text-xs font-bold text-slate-800">Nova Dark</span>
+                                    <span class="block text-[10px] text-slate-400">High-end dark</span>
+                                </div>
+                            </label>
+
+                            <!-- Clean White -->
+                            <label class="border rounded-2xl p-3.5 cursor-pointer flex items-center gap-3 transition-all {% if user_info and user_info.theme == 'clean' %}border-primary bg-indigo-50/50 ring-2 ring-primary ring-offset-1{% else %}border-slate-200 hover:border-slate-300{% endif %}" onclick="selectAppearanceTheme(this, 'clean')">
+                                <input type="radio" name="theme" value="clean" class="hidden" {% if user_info and user_info.theme == 'clean' %}checked{% endif %}>
+                                <div class="w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-sm flex flex-col items-center justify-center p-1 gap-1 shrink-0">
+                                    <div class="w-3 h-3 rounded-full bg-slate-300"></div>
+                                    <div class="w-5 h-3 bg-slate-100 rounded"></div>
+                                </div>
+                                <div>
+                                    <span class="block text-xs font-bold text-slate-800">Clean White</span>
+                                    <span class="block text-[10px] text-slate-400">Minimalist</span>
+                                </div>
+                            </label>
+
+                            <!-- Vibrant Gradient -->
+                            <label class="border rounded-2xl p-3.5 cursor-pointer flex items-center gap-3 transition-all {% if user_info and user_info.theme == 'gradient' %}border-primary bg-indigo-50/50 ring-2 ring-primary ring-offset-1{% else %}border-slate-200 hover:border-slate-300{% endif %}" onclick="selectAppearanceTheme(this, 'gradient')">
+                                <input type="radio" name="theme" value="gradient" class="hidden" {% if user_info and user_info.theme == 'gradient' %}checked{% endif %}>
+                                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-sm flex items-center justify-center p-1 shrink-0">
+                                    <div class="w-5 h-5 bg-white/30 rounded backdrop-blur-sm"></div>
+                                </div>
+                                <div>
+                                    <span class="block text-xs font-bold text-slate-800">Gradient</span>
+                                    <span class="block text-[10px] text-slate-400">Modern vibrant</span>
+                                </div>
+                            </label>
+
+                        </div>
+                    </div>
+
+                    <!-- Accent Color Picker -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">Primary Brand Color</label>
+                        <div class="flex flex-wrap items-center gap-3 mb-3">
+                            {% set swatches = ['#4f46e5', '#2563eb', '#059669', '#dc2626', '#7c3aed', '#ea580c', '#0f172a'] %}
+                            {% for color in swatches %}
+                            <button type="button" onclick="selectAccentColor('{{ color }}')" class="w-8 h-8 rounded-full border-2 transition transform hover:scale-110 shadow-xs {% if user_info and user_info.accent_color == color %}border-slate-800 ring-2 ring-offset-1 ring-slate-400 scale-105{% else %}border-white{% endif %}" style="background-color: {{ color }};" data-color="{{ color }}"></button>
+                            {% endfor %}
+                            <div class="flex items-center gap-2 ml-2">
+                                <input type="color" id="nativeColorPicker" value="{{ user_info.accent_color if user_info and user_info.accent_color else '#4f46e5' }}" onchange="selectAccentColor(this.value)" class="w-8 h-8 rounded-xl border border-slate-200 cursor-pointer p-0 bg-transparent">
+                                <input type="text" id="accentColorInput" name="accent_color" value="{{ user_info.accent_color if user_info and user_info.accent_color else '#4f46e5' }}" oninput="selectAccentColor(this.value)" class="w-24 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-800 uppercase text-center">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Layout Density -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Layout Density</label>
+                        <div class="grid grid-cols-3 gap-3">
+                            <label class="border rounded-xl p-3 text-center cursor-pointer {% if user_info and user_info.layout_density == 'compact' %}border-primary bg-indigo-50/60 font-bold text-primary{% else %}border-slate-200 text-slate-600{% endif %}">
+                                <input type="radio" name="layout_density" value="compact" class="hidden" {% if user_info and user_info.layout_density == 'compact' %}checked{% endif %}>
+                                <div class="text-xs font-bold">Compact</div>
+                            </label>
+                            <label class="border rounded-xl p-3 text-center cursor-pointer {% if not user_info or user_info.layout_density == 'comfortable' or not user_info.layout_density %}border-primary bg-indigo-50/60 font-bold text-primary{% else %}border-slate-200 text-slate-600{% endif %}">
+                                <input type="radio" name="layout_density" value="comfortable" class="hidden" {% if not user_info or user_info.layout_density == 'comfortable' or not user_info.layout_density %}checked{% endif %}>
+                                <div class="text-xs font-bold">Standard</div>
+                            </label>
+                            <label class="border rounded-xl p-3 text-center cursor-pointer {% if user_info and user_info.layout_density == 'spacious' %}border-primary bg-indigo-50/60 font-bold text-primary{% else %}border-slate-200 text-slate-600{% endif %}">
+                                <input type="radio" name="layout_density" value="spacious" class="hidden" {% if user_info and user_info.layout_density == 'spacious' %}checked{% endif %}>
+                                <div class="text-xs font-bold">Spacious</div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 flex justify-end">
+                        <button type="submit" class="px-6 py-3 bg-primary hover:bg-indigo-700 text-white font-bold rounded-xl text-sm transition shadow-sm flex items-center gap-2">
+                            <i class="fa-solid fa-check"></i> Save Checkout Appearance
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Right: Real-time Live Phone Mockup (5 Columns) -->
+            <div class="lg:col-span-5 flex flex-col items-center">
+                <div class="w-full bg-slate-100 rounded-3xl p-6 border border-slate-200 flex flex-col items-center justify-center relative shadow-inner">
+                    <div class="flex items-center justify-between w-full mb-4 px-2">
+                        <span class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            Live Checkout Preview
+                        </span>
+                        <button onclick="refreshPreviewIframe()" class="text-slate-400 hover:text-slate-600 text-xs font-semibold flex items-center gap-1 transition">
+                            <i class="fa-solid fa-arrows-rotate"></i> Reload
+                        </button>
+                    </div>
+
+                    <!-- Phone Frame -->
+                    <div class="w-full max-w-[340px] h-[680px] bg-white rounded-[2.5rem] shadow-2xl border-[8px] border-slate-800 overflow-hidden relative">
+                        <!-- Top Notch -->
+                        <div class="absolute top-0 inset-x-0 h-5 bg-slate-800 rounded-b-2xl w-32 mx-auto z-20"></div>
+                        <!-- Checkout Iframe -->
+                        <iframe id="previewIframe" src="/preview_checkout?theme={{ user_info.theme if user_info and user_info.theme else 'default' }}&accent_color={{ user_info.accent_color if user_info and user_info.accent_color else '%234f46e5' }}" class="w-full h-full border-0 bg-slate-50"></iframe>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<!-- ==================== DIRTY FORM SAVE BEFORE LEAVING BAR ==================== -->
+<div id="unsavedBar" class="unsaved-bar fixed bottom-6 inset-x-6 sm:inset-x-auto sm:right-10 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl z-40 border border-slate-700 flex items-center gap-5">
+    <div class="flex items-center gap-3">
+        <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
+        <span class="text-xs font-bold text-slate-200">You have unsaved changes in settings</span>
+    </div>
+    <div class="flex items-center gap-2">
+        <button type="button" onclick="discardChanges()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition">
+            Discard
+        </button>
+        <button type="button" onclick="submitActiveForm()" class="px-4 py-1.5 bg-primary hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1.5">
+            <i class="fa-solid fa-floppy-disk"></i> Save
+        </button>
+    </div>
+</div>
+
+<!-- ==================== MODALS ==================== -->
+
+<!-- 1. Mobile OTP Modal -->
+<div id="mobileOtpModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 transform transition-all">
+        <div class="flex items-center justify-between mb-4">
+            <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-lg">
+                <i class="fa-solid fa-mobile-screen"></i>
+            </div>
+            <button onclick="closeMobileOtpModal()" class="text-slate-400 hover:text-slate-600 text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <h3 class="text-base font-bold text-slate-800 mb-1">Verify Mobile Number</h3>
+        <p class="text-xs text-slate-500 mb-5">We will send an OTP confirmation to register this phone for account recovery.</p>
+
+        <!-- Step 1: Request OTP -->
+        <div id="otpStep1" class="space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Mobile Number</label>
+                <input type="tel" id="otpMobileInput" value="{{ user_info.mobile if user_info and user_info.mobile else '' }}" placeholder="e.g. 9876543210" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition">
+            </div>
+            <button type="button" onclick="requestMobileOtp()" id="sendOtpBtn" class="w-full py-3 bg-primary hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-2">
+                <span>Send Verification Code</span>
+            </button>
+        </div>
+
+        <!-- Step 2: Enter OTP -->
+        <div id="otpStep2" class="space-y-4 hidden">
+            <div class="p-3 bg-indigo-50/60 border border-indigo-100 rounded-xl text-xs text-primary font-medium flex items-center gap-2">
+                <i class="fa-solid fa-info-circle"></i>
+                <span id="otpNotice">Code sent to your mobile.</span>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Enter 6-Digit Code</label>
+                <input type="text" id="otpCodeInput" maxlength="6" placeholder="123456" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-center text-xl font-mono font-black text-slate-800 tracking-widest focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition">
+            </div>
+            <button type="button" onclick="verifyMobileOtp()" id="verifyOtpBtn" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-2">
+                <span>Confirm & Update Mobile</span>
+            </button>
         </div>
     </div>
 </div>
 
+<!-- 2. TOTP 2FA Setup Modal -->
+<div id="totpModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 transform transition-all">
+        <div class="flex items-center justify-between mb-4">
+            <div class="w-10 h-10 rounded-xl bg-indigo-50 text-primary flex items-center justify-center font-bold text-lg">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <button onclick="closeTotpModal()" class="text-slate-400 hover:text-slate-600 text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <h3 class="text-base font-bold text-slate-800 mb-1">Configure Two-Factor Auth</h3>
+        <p class="text-xs text-slate-500 mb-4">Scan the QR code below with your Authenticator app (Google Authenticator, Authy, etc.).</p>
+
+        <div class="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-2xl border border-slate-200 mb-4">
+            <img id="totpQrImage" src="" alt="2FA QR" class="w-48 h-48 rounded-xl shadow-xs mb-3">
+            <div class="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">Manual Secret Code</div>
+            <div id="totpSecretText" class="font-mono text-xs font-bold text-slate-800 select-all mt-0.5 tracking-wider"></div>
+        </div>
+
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">6-Digit Authenticator Code</label>
+                <input type="text" id="totpCodeInput" maxlength="6" placeholder="000000" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-center text-xl font-mono font-black text-slate-800 tracking-widest focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition">
+            </div>
+            <button type="button" onclick="confirm2FAToken()" id="verifyTotpBtn" class="w-full py-3 bg-primary hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-2">
+                <span>Verify & Activate 2FA</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SCRIPTS ==================== -->
 <script>
-function selectTheme(element, theme) {
-    document.querySelectorAll('input[name="theme"]').forEach(r => {
-        r.parentElement.classList.remove('border-primary', 'bg-indigo-50', 'ring-2', 'ring-primary', 'ring-offset-1');
-        r.parentElement.classList.add('border-slate-200');
-    });
-    element.classList.remove('border-slate-200');
-    element.classList.add('border-primary', 'bg-indigo-50', 'ring-2', 'ring-primary', 'ring-offset-1');
-    element.querySelector('input').checked = true;
-    
-    // Live update the iframe!
-    const iframe = document.getElementById('previewIframe');
-    if(iframe) {
-        iframe.src = '/preview_checkout?theme=' + theme;
+    const CSRF_TOKEN = "{{ csrf_token }}";
+    let isFormDirty = false;
+    let currentTab = "{{ active_tab if active_tab else 'profile' }}";
+
+    // Tab switcher
+    function switchTab(tabId) {
+        // Normalise tab aliases
+        if (tabId === 'payment_rules') tabId = 'payment';
+        if (tabId === 'api_webhooks') tabId = 'api';
+
+        document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+        const targetPane = document.getElementById('tab-content-' + tabId);
+        const targetBtn = document.getElementById('tab-nav-' + tabId);
+
+        if (targetPane && targetBtn) {
+            targetPane.classList.remove('hidden');
+            targetBtn.classList.add('active');
+            currentTab = tabId;
+            window.history.replaceState({}, document.title, window.location.pathname + '?tab=' + tabId);
+        }
     }
-}
-</script>
-<script>
+
+    // Initialize active tab from query or server
+    document.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        let tab = urlParams.get('tab') || "{{ active_tab if active_tab else 'profile' }}";
+        switchTab(tab);
+
+        // Dirty form listeners
+        document.querySelectorAll('form input, form select, form textarea').forEach(el => {
+            el.addEventListener('input', markFormDirty);
+            el.addEventListener('change', markFormDirty);
+        });
+    });
+
+    function markFormDirty() {
+        if (!isFormDirty) {
+            isFormDirty = true;
+            const bar = document.getElementById('unsavedBar');
+            if (bar) bar.classList.add('visible');
+        }
+    }
+
+    function discardChanges() {
+        window.location.reload();
+    }
+
+    function submitActiveForm() {
+        const activePane = document.getElementById('tab-content-' + currentTab);
+        if (activePane) {
+            const form = activePane.querySelector('form');
+            if (form) {
+                isFormDirty = false;
+                form.submit();
+            }
+        }
+    }
+
+    window.addEventListener('beforeunload', (e) => {
+        if (isFormDirty) {
+            e.preventDefault();
+            e.returnValue = 'You have unsaved changes in settings. Are you sure you want to leave?';
+        }
+    });
+
+    // Appearance Theme Picker & Live Preview Update
+    function selectAppearanceTheme(element, theme) {
+        document.querySelectorAll('input[name="theme"]').forEach(r => {
+            r.parentElement.classList.remove('border-primary', 'bg-indigo-50/50', 'ring-2', 'ring-primary', 'ring-offset-1');
+            r.parentElement.classList.add('border-slate-200');
+        });
+        element.classList.remove('border-slate-200');
+        element.classList.add('border-primary', 'bg-indigo-50/50', 'ring-2', 'ring-primary', 'ring-offset-1');
+        element.querySelector('input').checked = true;
+        markFormDirty();
+        updatePreview();
+    }
+
+    function selectAccentColor(color) {
+        if (!color || !color.startsWith('#')) return;
+        document.getElementById('nativeColorPicker').value = color;
+        document.getElementById('accentColorInput').value = color;
+
+        document.querySelectorAll('[data-color]').forEach(btn => {
+            if (btn.getAttribute('data-color') === color) {
+                btn.classList.add('border-slate-800', 'ring-2', 'ring-offset-1', 'ring-slate-400', 'scale-105');
+            } else {
+                btn.classList.remove('border-slate-800', 'ring-2', 'ring-offset-1', 'ring-slate-400', 'scale-105');
+            }
+        });
+        markFormDirty();
+        updatePreview();
+    }
+
+    function updatePreview() {
+        const activeThemeEl = document.querySelector('input[name="theme"]:checked');
+        const theme = activeThemeEl ? activeThemeEl.value : 'default';
+        const color = document.getElementById('accentColorInput').value || '#4f46e5';
+        const iframe = document.getElementById('previewIframe');
+        if (iframe) {
+            iframe.src = '/preview_checkout?theme=' + encodeURIComponent(theme) + '&accent_color=' + encodeURIComponent(color);
+        }
+    }
+
+    function refreshPreviewIframe() {
+        updatePreview();
+    }
+
+    // Copy to clipboard helper
+    function copyToClipboard(elementId, btn) {
+        const text = document.getElementById(elementId).innerText;
+        navigator.clipboard.writeText(text).then(() => {
+            const orig = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+            setTimeout(() => { btn.innerHTML = orig; }, 2000);
+        });
+    }
+
+    // API Key Regeneration Flow
+    function confirmRegenerateKey(keyType) {
+        Swal.fire({
+            title: 'Regenerate ' + keyType.toUpperCase() + ' Key?',
+            text: 'Any application or script using the previous key will immediately stop working until updated.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Yes, Regenerate Key'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/settings/api_keys/regenerate';
+                
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrf_token';
+                csrfInput.value = CSRF_TOKEN;
+                form.appendChild(csrfInput);
+
+                const typeInput = document.createElement('input');
+                typeInput.type = 'hidden';
+                typeInput.name = 'key_type';
+                typeInput.value = keyType;
+                form.appendChild(typeInput);
+
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    }
+
+    // Mobile OTP Flow
+    function openMobileOtpModal() {
+        document.getElementById('mobileOtpModal').classList.remove('hidden');
+        document.getElementById('otpStep1').classList.remove('hidden');
+        document.getElementById('otpStep2').classList.add('hidden');
+    }
+
+    function closeMobileOtpModal() {
+        document.getElementById('mobileOtpModal').classList.add('hidden');
+    }
+
+    async function requestMobileOtp() {
+        const mobile = document.getElementById('otpMobileInput').value.trim();
+        if (!mobile) {
+            Swal.fire('Required', 'Please enter a valid mobile number', 'info');
+            return;
+        }
+
+        const btn = document.getElementById('sendOtpBtn');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending...';
+        btn.disabled = true;
+
+        try {
+            const formData = new FormData();
+            formData.append('mobile', mobile);
+            formData.append('csrf_token', CSRF_TOKEN);
+
+            const res = await fetch('/settings/request_mobile_otp', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+
+            if (data.status === 'success') {
+                document.getElementById('otpStep1').classList.add('hidden');
+                document.getElementById('otpStep2').classList.remove('hidden');
+                if (data.debug_otp) {
+                    document.getElementById('otpNotice').innerText = 'Code sent! Dev test code: ' + data.debug_otp;
+                }
+            } else {
+                Swal.fire('Error', data.message || 'Failed to send OTP', 'error');
+            }
+        } catch (e) {
+            Swal.fire('Error', 'Network error requesting OTP', 'error');
+        }
+        btn.innerHTML = orig;
+        btn.disabled = false;
+    }
+
+    async function verifyMobileOtp() {
+        const code = document.getElementById('otpCodeInput').value.trim();
+        if (!code) {
+            Swal.fire('Required', 'Please enter the 6-digit OTP code', 'info');
+            return;
+        }
+
+        const btn = document.getElementById('verifyOtpBtn');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verifying...';
+        btn.disabled = true;
+
+        try {
+            const formData = new FormData();
+            formData.append('otp', code);
+            formData.append('csrf_token', CSRF_TOKEN);
+
+            const res = await fetch('/settings/verify_mobile_otp', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+
+            if (data.status === 'success') {
+                closeMobileOtpModal();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Verified!',
+                    text: data.message,
+                    confirmButtonColor: '#4f46e5'
+                }).then(() => {
+                    window.location.href = '/settings?tab=profile';
+                });
+            } else {
+                Swal.fire('Error', data.message || 'Invalid code', 'error');
+            }
+        } catch (e) {
+            Swal.fire('Error', 'Network error verifying code', 'error');
+        }
+        btn.innerHTML = orig;
+        btn.disabled = false;
+    }
+
+    // Telegram Test Alert
+    async function sendTestTelegramAlert() {
+        const btn = document.getElementById('testTgBtn');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending Test...';
+        btn.disabled = true;
+
+        try {
+            const formData = new FormData();
+            formData.append('csrf_token', CSRF_TOKEN);
+
+            const res = await fetch('/settings/notifications/test', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+
+            if (data.status === 'success') {
+                Swal.fire('Telegram Test Sent!', data.message, 'success');
+            } else {
+                Swal.fire('Telegram Error', data.message, 'error');
+            }
+        } catch (e) {
+            Swal.fire('Error', 'Failed to communicate with gateway server', 'error');
+        }
+        btn.innerHTML = orig;
+        btn.disabled = false;
+    }
+
+    // Session Management
+    async function revokeSession(sessionId) {
+        Swal.fire({
+            title: 'Revoke Session?',
+            text: 'That device will be logged out immediately.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            confirmButtonText: 'Revoke Device'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                const formData = new FormData();
+                formData.append('csrf_token', CSRF_TOKEN);
+                const res = await fetch('/settings/revoke_session/' + sessionId, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    window.location.href = '/settings?tab=security&success=Session+revoked';
+                } else {
+                    Swal.fire('Error', data.message || 'Failed to revoke', 'error');
+                }
+            }
+        });
+    }
+
+    function logoutAllSessions() {
+        Swal.fire({
+            title: 'Logout Everywhere?',
+            text: 'This will terminate all active sessions including other browsers and devices.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            confirmButtonText: 'Logout All Sessions'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/settings/logout_all_sessions';
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrf_token';
+                csrfInput.value = CSRF_TOKEN;
+                form.appendChild(csrfInput);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    }
+
+    // 2FA TOTP Flow
+    async function start2FASetup() {
+        try {
+            const formData = new FormData();
+            formData.append('csrf_token', CSRF_TOKEN);
+            const res = await fetch('/settings/2fa/setup', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                document.getElementById('totpQrImage').src = data.qr_base64;
+                document.getElementById('totpSecretText').innerText = data.secret;
+                document.getElementById('totpModal').classList.remove('hidden');
+            } else {
+                Swal.fire('Error', data.message || 'Failed to start 2FA setup', 'error');
+            }
+        } catch (e) {
+            Swal.fire('Error', 'Network error during 2FA setup', 'error');
+        }
+    }
+
+    function closeTotpModal() {
+        document.getElementById('totpModal').classList.add('hidden');
+    }
+
+    async function confirm2FAToken() {
+        const code = document.getElementById('totpCodeInput').value.trim();
+        if (!code) {
+            Swal.fire('Required', 'Please enter the 6-digit code from your app', 'info');
+            return;
+        }
+
+        const btn = document.getElementById('verifyTotpBtn');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Activating...';
+        btn.disabled = true;
+
+        try {
+            const formData = new FormData();
+            formData.append('token', code);
+            formData.append('csrf_token', CSRF_TOKEN);
+
+            const res = await fetch('/settings/2fa/verify', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+
+            if (data.status === 'success') {
+                closeTotpModal();
+                Swal.fire({
+                    icon: 'success',
+                    title: '2FA Activated!',
+                    html: '<p class="text-sm">Two-factor authentication is now active for your account.</p>',
+                    confirmButtonColor: '#4f46e5'
+                }).then(() => {
+                    window.location.href = '/settings?tab=security';
+                });
+            } else {
+                Swal.fire('Invalid Code', data.message || 'The authenticator code was incorrect.', 'error');
+            }
+        } catch (e) {
+            Swal.fire('Error', 'Network error verifying 2FA code', 'error');
+        }
+        btn.innerHTML = orig;
+        btn.disabled = false;
+    }
+
+    async function disable2FA() {
+        const { value: password } = await Swal.fire({
+            title: 'Disable Two-Factor Authentication',
+            input: 'password',
+            inputLabel: 'Confirm your account password to proceed',
+            inputPlaceholder: '••••••••',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            confirmButtonText: 'Disable 2FA'
+        });
+
+        if (password) {
+            const formData = new FormData();
+            formData.append('password', password);
+            formData.append('csrf_token', CSRF_TOKEN);
+
+            const res = await fetch('/settings/2fa/disable', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                Swal.fire('Disabled', 'Two-factor authentication has been disabled.', 'success').then(() => {
+                    window.location.href = '/settings?tab=security';
+                });
+            } else {
+                Swal.fire('Error', data.message || 'Incorrect password', 'error');
+            }
+        }
+    }
+
+    // SweetAlert Flash / Query Handler
     const urlParams = new URLSearchParams(window.location.search);
-    if(urlParams.has("success")) {
+    if (urlParams.has("success")) {
         Swal.fire({
             icon: "success",
             title: "Success",
             text: urlParams.get("success"),
             confirmButtonColor: "#4f46e5",
-            timer: 2000,
+            timer: 2500,
             showConfirmButton: false
         });
-        window.history.replaceState({}, document.title, window.location.pathname);
+        window.history.replaceState({}, document.title, window.location.pathname + (urlParams.has('tab') ? '?tab=' + urlParams.get('tab') : ''));
+    } else if (urlParams.has("error")) {
+        Swal.fire({
+            icon: "error",
+            title: "Settings Notice",
+            text: urlParams.get("error"),
+            confirmButtonColor: "#4f46e5"
+        });
+        window.history.replaceState({}, document.title, window.location.pathname + (urlParams.has('tab') ? '?tab=' + urlParams.get('tab') : ''));
     }
 </script>
 {% endblock %}
-

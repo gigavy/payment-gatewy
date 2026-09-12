@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -152,9 +152,11 @@
             }, 200);
         }
 
-        pModal.addEventListener('click', (e) => {
-            if (e.target === pModal) hideCreatePaymentModal();
-        });
+        if (pModal) {
+            pModal.addEventListener('click', (e) => {
+                if (e.target === pModal) hideCreatePaymentModal();
+            });
+        }
     </script>
 </body>
 </html>
