@@ -216,7 +216,9 @@ def init_db():
             totp_secret_enc TEXT,
             totp_enabled INTEGER DEFAULT 0,
             accent_color TEXT DEFAULT '#4f46e5',
-            layout_density TEXT DEFAULT 'comfortable'
+            layout_density TEXT DEFAULT 'comfortable',
+            google_id TEXT UNIQUE,
+            auth_provider TEXT DEFAULT 'local'
         )
     ''')
     
@@ -338,7 +340,9 @@ def init_db():
         ('totp_secret_enc', "TEXT"),
         ('totp_enabled', "INTEGER DEFAULT 0"),
         ('accent_color', "TEXT DEFAULT '#4f46e5'"),
-        ('layout_density', "TEXT DEFAULT 'comfortable'")
+        ('layout_density', "TEXT DEFAULT 'comfortable'"),
+        ('google_id', "TEXT UNIQUE"),
+        ('auth_provider', "TEXT DEFAULT 'local'")
     ]
     for col, col_def in user_migrations:
         if col not in existing_user_cols:
@@ -415,7 +419,9 @@ def get_user(user_id):
             "totp_enabled": bool(d.get("totp_enabled")),
             "accent_color": d.get("accent_color") or "#4f46e5",
             "layout_density": d.get("layout_density") or "comfortable",
-            "password_hash": d.get("password_hash")
+            "password_hash": d.get("password_hash"),
+            "google_id": d.get("google_id"),
+            "auth_provider": d.get("auth_provider") or "local"
         }
     return None
 
@@ -630,26 +636,134 @@ def establish_user_session(user_id):
     session['session_id'] = session_id
     session['csrf_token'] = secrets.token_hex(32)
 
+def get_google_oauth_credentials():
+    client_id = get_sys_setting('google_client_id', '') or os.environ.get('GOOGLE_CLIENT_ID', '')
+    client_secret = get_sys_setting('google_client_secret', '') or os.environ.get('GOOGLE_CLIENT_SECRET', '')
+    return client_id.strip(), client_secret.strip()
+
+def get_google_redirect_uri():
+    host = request.headers.get('X-Forwarded-Host') or request.host
+    proto = request.headers.get('X-Forwarded-Proto') or request.scheme
+    if request.is_secure:
+        proto = 'https'
+    return f"{proto}://{host}/login/google/callback"
+
+@app.route('/login/google')
+def login_google():
+    client_id, _ = get_google_oauth_credentials()
+    if not client_id:
+        error_msg = "Google Sign-In is not configured yet. Please enter Google Client ID and Secret in Admin Settings."
+        return render_template('login.html', error=error_msg)
+        
+    state = secrets.token_urlsafe(32)
+    session['oauth_state'] = state
+    redirect_uri = get_google_redirect_uri()
+    
+    params = {
+        'client_id': client_id,
+        'redirect_uri': redirect_uri,
+        'response_type': 'code',
+        'scope': 'openid email profile',
+        'state': state,
+        'access_type': 'online',
+        'prompt': 'select_account'
+    }
+    auth_url = 'https://accounts.google.com/o/oauth2/v2/auth?' + urllib.parse.urlencode(params)
+    return redirect(auth_url)
+
+@app.route('/login/google/callback')
+def google_callback():
+    error = request.args.get('error')
+    if error:
+        return render_template('login.html', error=f"Google authentication canceled: {error}")
+        
+    code = request.args.get('code')
+    state = request.args.get('state')
+    saved_state = session.pop('oauth_state', None)
+    
+    if not code or not state or not saved_state or not hmac.compare_digest(state, saved_state):
+        return render_template('login.html', error="Invalid or expired authentication session. Please try again.")
+        
+    client_id, client_secret = get_google_oauth_credentials()
+    if not client_id or not client_secret:
+        return render_template('login.html', error="Google OAuth credentials are not properly configured.")
+        
+    redirect_uri = get_google_redirect_uri()
+    
+    # 1. Exchange code for access token
+    token_url = "https://oauth2.googleapis.com/token"
+    token_payload = {
+        'code': code,
+        'client_id': client_id,
+        'client_secret': client_secret,
+        'redirect_uri': redirect_uri,
+        'grant_type': 'authorization_code'
+    }
+    
+    try:
+        token_resp = requests.post(token_url, data=token_payload, timeout=10)
+        token_data = token_resp.json()
+    except Exception as e:
+        return render_template('login.html', error="Network error communicating with Google authentication servers.")
+        
+    access_token = token_data.get('access_token')
+    if not access_token:
+        err_desc = token_data.get('error_description') or token_data.get('error') or "Failed to exchange token with Google"
+        return render_template('login.html', error=f"Google authentication error: {err_desc}")
+        
+    # 2. Fetch user profile from Google UserInfo endpoint
+    userinfo_url = "https://www.googleapis.com/oauth2/v2/userinfo"
+    try:
+        userinfo_resp = requests.get(userinfo_url, headers={'Authorization': f"Bearer {access_token}"}, timeout=10)
+        user_info = userinfo_resp.json()
+    except Exception as e:
+        return render_template('login.html', error="Network error fetching verified profile from Google.")
+        
+    google_id = str(user_info.get('id', '')).strip()
+    google_email = str(user_info.get('email', '')).strip().lower()
+    display_name = user_info.get('name') or user_info.get('given_name') or 'Merchant'
+    profile_pic = user_info.get('picture') or ''
+    
+    if not google_email:
+        return render_template('login.html', error="Unable to obtain verified email address from your Google account.")
+        
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    
+    # 3. Check for existing user by google_id or verified email
+    c.execute("SELECT user_id, password_hash, google_id FROM users WHERE (google_id IS NOT NULL AND google_id = ?) OR LOWER(email) = ? OR LOWER(username) = ?", 
+              (google_id, google_email, google_email))
+    row = c.fetchone()
+    
+    if row:
+        user_id = row[0]
+        # Link google_id if not already set, update avatar if empty
+        if not row[2]:
+            c.execute("UPDATE users SET google_id = ?, auth_provider = 'google' WHERE user_id = ?", (google_id, user_id))
+        if profile_pic:
+            c.execute("UPDATE users SET profile_pic = ? WHERE user_id = ? AND (profile_pic IS NULL OR profile_pic = '')", (profile_pic, user_id))
+        conn.commit()
+        conn.close()
+        add_sys_log(user_id, "Logged in via Google Account.")
+    else:
+        # 4. Create new user account - verified strictly through Google
+        now_str = datetime.now().isoformat()
+        username = google_email
+        c.execute("""INSERT INTO users (username, email, google_id, display_name, profile_pic, auth_provider, created_at, role, plan_name)
+                     VALUES (?, ?, ?, ?, ?, 'google', ?, 'merchant', 'Free')""",
+                  (username, google_email, google_id, display_name, profile_pic, now_str))
+        user_id = c.lastrowid
+        conn.commit()
+        conn.close()
+        add_sys_log(user_id, f"Registered new merchant account via Google ({google_email}).")
+        
+    establish_user_session(user_id)
+    return redirect(url_for('dashboard'))
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("SELECT user_id, password_hash, totp_enabled FROM users WHERE username=?", (username,))
-        row = c.fetchone()
-        conn.close()
-        
-        if row and check_password_hash(row[1], password):
-            # Check if 2FA is enabled
-            if row[2] == 1:
-                session['pending_2fa_user_id'] = row[0]
-                return redirect(url_for('login_2fa'))
-            establish_user_session(row[0])
-            return redirect(url_for('dashboard'))
-        else:
-            return render_template('login.html', error='Invalid credentials')
+        return render_template('login.html', error='Manual credentials are disabled. Please sign in using your verified Google Account.')
     return render_template('login.html')
 
 @app.route('/login/2fa', methods=['GET', 'POST'])
@@ -680,24 +794,7 @@ def login_2fa():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        if not username or not password:
-            return render_template('register.html', error='Username and password required')
-            
-        password_hash = generate_password_hash(password)
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        try:
-            c.execute("INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)", (username, password_hash, datetime.now().isoformat()))
-            user_id = c.lastrowid
-            conn.commit()
-            establish_user_session(user_id)
-            return redirect(url_for('dashboard'))
-        except sqlite3.IntegrityError:
-            return render_template('register.html', error='Username already exists')
-        finally:
-            conn.close()
+        return render_template('register.html', error='Direct manual account creation is disabled. Please create your account with a verified Google Account.')
     return render_template('register.html')
 
 
@@ -1150,8 +1247,10 @@ def settings_change_password():
     confirm_pass = request.form.get('confirm_password', '')
     logout_other = request.form.get('logout_other_devices')
     
-    if not check_password_hash(user_info['password_hash'], current_pass):
-        return redirect(url_for('settings', tab='security', error='Current password is incorrect.'))
+    has_existing_pass = bool(user_info.get('password_hash'))
+    if has_existing_pass:
+        if not check_password_hash(user_info['password_hash'], current_pass):
+            return redirect(url_for('settings', tab='security', error='Current password is incorrect.'))
         
     if len(new_pass) < 6:
         return redirect(url_for('settings', tab='security', error='New password must be at least 6 characters long.'))
@@ -1174,8 +1273,9 @@ def settings_change_password():
     conn.commit()
     conn.close()
     
-    add_sys_log(user_id, "Account password changed.")
-    msg = 'Password updated successfully!'
+    action_text = "Account password updated." if has_existing_pass else "Account password created."
+    add_sys_log(user_id, action_text)
+    msg = 'Password saved successfully! You can now log in using your Gmail and password.' if not has_existing_pass else 'Password updated successfully!'
     if logout_other:
         msg += ' Other device sessions signed out.'
     return redirect(url_for('settings', tab='security', success=msg))

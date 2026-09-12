@@ -186,8 +186,13 @@
                             <i class="fa-solid fa-key"></i>
                         </div>
                         <div>
-                            <h3 class="text-base font-bold text-slate-800">Change Account Password</h3>
-                            <p class="text-xs text-slate-500">Update your merchant access credentials. Use a strong password to ensure account security.</p>
+                            {% if user_info and user_info.password_hash %}
+                                <h3 class="text-base font-bold text-slate-800">Change Account Password</h3>
+                                <p class="text-xs text-slate-500">Update your merchant access credentials. Use a strong password to ensure account security.</p>
+                            {% else %}
+                                <h3 class="text-base font-bold text-slate-800">Set Account Password</h3>
+                                <p class="text-xs text-slate-500">You signed in with Google. Set a password so you can also log in directly using your Gmail address and password.</p>
+                            {% endif %}
                         </div>
                     </div>
                     <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200 self-start sm:self-auto">
@@ -198,6 +203,7 @@
                 <form id="securityPasswordForm" action="/settings/change_password" method="POST" class="space-y-6" onsubmit="return validatePasswordSubmit()">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
+                    {% if user_info and user_info.password_hash %}
                     <!-- Current Password Field -->
                     <div class="max-w-xl">
                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Current Password</label>
@@ -212,6 +218,17 @@
 
                     <!-- Divider -->
                     <div class="border-t border-slate-100 pt-2 max-w-xl"></div>
+                    {% else %}
+                    <!-- Google Connected Notice -->
+                    <div class="max-w-xl p-4 rounded-xl bg-blue-50/70 border border-blue-200/70 flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">
+                            <i class="fa-brands fa-google"></i>
+                        </div>
+                        <div class="text-xs text-slate-600 leading-relaxed">
+                            <strong class="text-slate-800">Connected via Google:</strong> Setting an account password lets you log in with your verified Gmail ({{ user_info.email if user_info else '' }}) and password anytime, while keeping one-click Google Sign-In active.
+                        </div>
+                    </div>
+                    {% endif %}
 
                     <!-- New Password Field -->
                     <div class="max-w-xl">
@@ -287,7 +304,7 @@
                     <!-- Submit Button -->
                     <div class="pt-2 max-w-xl flex items-center justify-start">
                         <button type="submit" id="submitPasswordBtn" class="px-6 py-3 bg-slate-900 hover:bg-black text-white font-bold rounded-xl text-xs transition shadow-sm flex items-center gap-2">
-                            <i class="fa-solid fa-lock"></i> Update Account Password
+                            <i class="fa-solid fa-lock"></i> {{ 'Update Account Password' if user_info and user_info.password_hash else 'Save Account Password' }}
                         </button>
                     </div>
                 </form>
@@ -763,14 +780,17 @@
     }
 
     function validatePasswordSubmit() {
-        const currentPass = document.getElementById('currentPasswordInput')?.value || '';
+        const currentPassInput = document.getElementById('currentPasswordInput');
+        if (currentPassInput) {
+            const currentPass = currentPassInput.value || '';
+            if (!currentPass) {
+                Swal.fire('Required', 'Please enter your current password.', 'warning');
+                return false;
+            }
+        }
         const newPass = document.getElementById('newPasswordInput')?.value || '';
         const confirmPass = document.getElementById('confirmPasswordInput')?.value || '';
 
-        if (!currentPass) {
-            Swal.fire('Required', 'Please enter your current password.', 'warning');
-            return false;
-        }
         if (newPass.length < 6) {
             Swal.fire('Password Too Short', 'New password must be at least 6 characters long.', 'warning');
             return false;
