@@ -226,11 +226,9 @@
                 <i class="fa-solid fa-key w-5 text-center"></i> API Keys
             </a>
             
-            
-            
-
-            
-            
+            <a href="/appearance" class="sidebar-link {% if request.path in ['/appearance', '/customize_appearance'] %}active{% endif %} flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-300">
+                <i class="fa-solid fa-palette w-5 text-center"></i> Customize Appearance
+            </a>
             
             <a href="/settings" class="sidebar-link {% if request.path == '/settings' %}active{% endif %} flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-300">
                 <i class="fa-solid fa-gear w-5 text-center"></i> Settings

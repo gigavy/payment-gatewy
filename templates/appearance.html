@@ -1,0 +1,251 @@
+﻿{% extends 'base.html' %}
+
+{% block extra_head %}
+<style>
+    .appearance-card {
+        transition: all 0.2s ease;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto pb-20">
+
+    <!-- Page Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+            <div class="flex items-center gap-3 mb-1">
+                <h1 class="text-2xl font-black text-slate-800 tracking-tight">Customize Appearance</h1>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-600 border border-indigo-200">
+                    <i class="fa-solid fa-wand-magic-sparkles text-[11px]"></i>
+                    Live Preview
+                </span>
+            </div>
+            <p class="text-sm font-medium text-slate-500">Customize your hosted payment checkout theme, brand accent color, and layout density with real-time live preview.</p>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <a href="/preview_checkout" target="_blank" class="inline-flex items-center gap-2 px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:text-indigo-600 hover:border-indigo-200 shadow-sm transition">
+                <i class="fa-solid fa-arrow-up-right-from-square text-slate-400"></i>
+                Full Preview
+            </a>
+        </div>
+    </div>
+
+    <!-- Alert Messages if any -->
+    {% if request.args.get('success') %}
+    <div class="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-between shadow-xs">
+        <div class="flex items-center gap-2.5">
+            <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
+            <span>{{ request.args.get('success') }}</span>
+        </div>
+        <button onclick="this.parentElement.remove()" class="text-emerald-500 hover:text-emerald-700 text-sm"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    {% endif %}
+
+    {% if request.args.get('error') %}
+    <div class="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center justify-between shadow-xs">
+        <div class="flex items-center gap-2.5">
+            <i class="fa-solid fa-triangle-exclamation text-rose-600 text-base"></i>
+            <span>{{ request.args.get('error') }}</span>
+        </div>
+        <button onclick="this.parentElement.remove()" class="text-rose-500 hover:text-rose-700 text-sm"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        
+        <!-- Left Controls: 7 Columns -->
+        <div class="lg:col-span-7 bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-100">
+            <div class="mb-6">
+                <h3 class="text-base font-bold text-slate-800">Checkout Look & Brand Experience</h3>
+                <p class="text-xs text-slate-500 mt-0.5">Customize your payment sheet with real-time responsive preview.</p>
+            </div>
+
+            <form id="appearanceForm" action="/appearance" method="POST" class="space-y-6">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+                <!-- Theme Selection -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">Preset Theme Style</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        
+                        <!-- Nova Light -->
+                        <label class="border rounded-2xl p-3.5 cursor-pointer flex items-center gap-3 transition-all {% if not user_info or user_info.theme == 'default' %}border-primary bg-indigo-50/50 ring-2 ring-primary ring-offset-1{% else %}border-slate-200 hover:border-slate-300{% endif %}" onclick="selectAppearanceTheme(this, 'default')">
+                            <input type="radio" name="theme" value="default" class="hidden" {% if not user_info or user_info.theme == 'default' %}checked{% endif %}>
+                            <div class="w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-sm flex flex-col overflow-hidden shrink-0">
+                                <div class="w-full h-3.5 bg-primary"></div>
+                                <div class="flex-1 w-full bg-slate-50 flex items-center justify-center"><div class="w-4 h-4 rounded bg-white shadow-xs"></div></div>
+                            </div>
+                            <div>
+                                <span class="block text-xs font-bold text-slate-800">Nova Light</span>
+                                <span class="block text-[10px] text-slate-400">Clean & standard</span>
+                            </div>
+                        </label>
+
+                        <!-- Nova Dark -->
+                        <label class="border rounded-2xl p-3.5 cursor-pointer flex items-center gap-3 transition-all {% if user_info and user_info.theme == 'premium' %}border-primary bg-indigo-50/50 ring-2 ring-primary ring-offset-1{% else %}border-slate-200 hover:border-slate-300{% endif %}" onclick="selectAppearanceTheme(this, 'premium')">
+                            <input type="radio" name="theme" value="premium" class="hidden" {% if user_info and user_info.theme == 'premium' %}checked{% endif %}>
+                            <div class="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700 shadow-sm flex flex-col overflow-hidden shrink-0">
+                                <div class="w-full h-3.5 bg-slate-800 border-b border-slate-700"></div>
+                                <div class="flex-1 w-full flex items-center justify-center"><div class="w-4 h-4 rounded bg-slate-800"></div></div>
+                            </div>
+                            <div>
+                                <span class="block text-xs font-bold text-slate-800">Nova Dark</span>
+                                <span class="block text-[10px] text-slate-400">High-end dark</span>
+                            </div>
+                        </label>
+
+                        <!-- Clean White -->
+                        <label class="border rounded-2xl p-3.5 cursor-pointer flex items-center gap-3 transition-all {% if user_info and user_info.theme == 'clean' %}border-primary bg-indigo-50/50 ring-2 ring-primary ring-offset-1{% else %}border-slate-200 hover:border-slate-300{% endif %}" onclick="selectAppearanceTheme(this, 'clean')">
+                            <input type="radio" name="theme" value="clean" class="hidden" {% if user_info and user_info.theme == 'clean' %}checked{% endif %}>
+                            <div class="w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-sm flex flex-col items-center justify-center p-1 gap-1 shrink-0">
+                                <div class="w-3 h-3 rounded-full bg-slate-300"></div>
+                                <div class="w-5 h-3 bg-slate-100 rounded"></div>
+                            </div>
+                            <div>
+                                <span class="block text-xs font-bold text-slate-800">Clean White</span>
+                                <span class="block text-[10px] text-slate-400">Minimalist</span>
+                            </div>
+                        </label>
+
+                        <!-- Vibrant Gradient -->
+                        <label class="border rounded-2xl p-3.5 cursor-pointer flex items-center gap-3 transition-all {% if user_info and user_info.theme == 'gradient' %}border-primary bg-indigo-50/50 ring-2 ring-primary ring-offset-1{% else %}border-slate-200 hover:border-slate-300{% endif %}" onclick="selectAppearanceTheme(this, 'gradient')">
+                            <input type="radio" name="theme" value="gradient" class="hidden" {% if user_info and user_info.theme == 'gradient' %}checked{% endif %}>
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-sm flex items-center justify-center p-1 shrink-0">
+                                <div class="w-5 h-5 bg-white/30 rounded backdrop-blur-sm"></div>
+                            </div>
+                            <div>
+                                <span class="block text-xs font-bold text-slate-800">Gradient</span>
+                                <span class="block text-[10px] text-slate-400">Modern vibrant</span>
+                            </div>
+                        </label>
+
+                    </div>
+                </div>
+
+                <!-- Accent Color Picker -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">Primary Brand Color</label>
+                    <div class="flex flex-wrap items-center gap-3 mb-3">
+                        {% set swatches = ['#4f46e5', '#2563eb', '#059669', '#dc2626', '#7c3aed', '#ea580c', '#0f172a'] %}
+                        {% for color in swatches %}
+                        <button type="button" onclick="selectAccentColor('{{ color }}')" class="w-8 h-8 rounded-full border-2 transition transform hover:scale-110 shadow-xs {% if user_info and user_info.accent_color == color %}border-slate-800 ring-2 ring-offset-1 ring-slate-400 scale-105{% else %}border-white{% endif %}" style="background-color: {{ color }};" data-color="{{ color }}"></button>
+                        {% endfor %}
+                        <div class="flex items-center gap-2 ml-2">
+                            <input type="color" id="nativeColorPicker" value="{{ user_info.accent_color if user_info and user_info.accent_color else '#4f46e5' }}" onchange="selectAccentColor(this.value)" class="w-8 h-8 rounded-xl border border-slate-200 cursor-pointer p-0 bg-transparent">
+                            <input type="text" id="accentColorInput" name="accent_color" value="{{ user_info.accent_color if user_info and user_info.accent_color else '#4f46e5' }}" oninput="selectAccentColor(this.value)" class="w-24 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-800 uppercase text-center">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Layout Density -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Layout Density</label>
+                    <div class="grid grid-cols-3 gap-3">
+                        <label class="border rounded-xl p-3 text-center cursor-pointer transition-all {% if user_info and user_info.layout_density == 'compact' %}border-primary bg-indigo-50/60 font-bold text-primary ring-2 ring-primary ring-offset-1{% else %}border-slate-200 text-slate-600{% endif %}" onclick="selectDensity(this, 'compact')">
+                            <input type="radio" name="layout_density" value="compact" class="hidden" {% if user_info and user_info.layout_density == 'compact' %}checked{% endif %}>
+                            <div class="text-xs font-bold">Compact</div>
+                        </label>
+                        <label class="border rounded-xl p-3 text-center cursor-pointer transition-all {% if not user_info or user_info.layout_density == 'comfortable' or not user_info.layout_density %}border-primary bg-indigo-50/60 font-bold text-primary ring-2 ring-primary ring-offset-1{% else %}border-slate-200 text-slate-600{% endif %}" onclick="selectDensity(this, 'comfortable')">
+                            <input type="radio" name="layout_density" value="comfortable" class="hidden" {% if not user_info or user_info.layout_density == 'comfortable' or not user_info.layout_density %}checked{% endif %}>
+                            <div class="text-xs font-bold">Standard</div>
+                        </label>
+                        <label class="border rounded-xl p-3 text-center cursor-pointer transition-all {% if user_info and user_info.layout_density == 'spacious' %}border-primary bg-indigo-50/60 font-bold text-primary ring-2 ring-primary ring-offset-1{% else %}border-slate-200 text-slate-600{% endif %}" onclick="selectDensity(this, 'spacious')">
+                            <input type="radio" name="layout_density" value="spacious" class="hidden" {% if user_info and user_info.layout_density == 'spacious' %}checked{% endif %}>
+                            <div class="text-xs font-bold">Spacious</div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="pt-4 flex justify-end">
+                    <button type="submit" class="px-6 py-3 bg-primary hover:bg-indigo-700 text-white font-bold rounded-xl text-sm transition shadow-sm flex items-center gap-2">
+                        <i class="fa-solid fa-check"></i> Save Checkout Appearance
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Right: Real-time Live Phone Mockup (5 Columns) -->
+        <div class="lg:col-span-5 flex flex-col items-center">
+            <div class="w-full bg-slate-100 rounded-3xl p-6 border border-slate-200 flex flex-col items-center justify-center relative shadow-inner">
+                <div class="flex items-center justify-between w-full mb-4 px-2">
+                    <span class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Live Checkout Preview
+                    </span>
+                    <button onclick="refreshPreviewIframe()" class="text-slate-400 hover:text-slate-600 text-xs font-semibold flex items-center gap-1 transition">
+                        <i class="fa-solid fa-arrows-rotate"></i> Reload
+                    </button>
+                </div>
+
+                <!-- Phone Frame -->
+                <div class="w-full max-w-[340px] h-[680px] bg-white rounded-[2.5rem] shadow-2xl border-[8px] border-slate-800 overflow-hidden relative">
+                    <!-- Top Notch -->
+                    <div class="absolute top-0 inset-x-0 h-5 bg-slate-800 rounded-b-2xl w-32 mx-auto z-20"></div>
+                    <!-- Checkout Iframe -->
+                    <iframe id="previewIframe" src="/preview_checkout?theme={{ user_info.theme if user_info and user_info.theme else 'default' }}&accent_color={{ user_info.accent_color if user_info and user_info.accent_color else '%234f46e5' }}" class="w-full h-full border-0 bg-slate-50"></iframe>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+    // Live Theme Selection
+    function selectAppearanceTheme(element, theme) {
+        document.querySelectorAll('input[name="theme"]').forEach(r => {
+            r.parentElement.classList.remove('border-primary', 'bg-indigo-50/50', 'ring-2', 'ring-primary', 'ring-offset-1');
+            r.parentElement.classList.add('border-slate-200');
+        });
+        element.classList.remove('border-slate-200');
+        element.classList.add('border-primary', 'bg-indigo-50/50', 'ring-2', 'ring-primary', 'ring-offset-1');
+        element.querySelector('input').checked = true;
+        updatePreview();
+    }
+
+    // Live Color Selection
+    function selectAccentColor(color) {
+        if (!color || !color.startsWith('#')) return;
+        document.getElementById('nativeColorPicker').value = color;
+        document.getElementById('accentColorInput').value = color;
+
+        document.querySelectorAll('[data-color]').forEach(btn => {
+            if (btn.getAttribute('data-color') === color) {
+                btn.classList.add('border-slate-800', 'ring-2', 'ring-offset-1', 'ring-slate-400', 'scale-105');
+            } else {
+                btn.classList.remove('border-slate-800', 'ring-2', 'ring-offset-1', 'ring-slate-400', 'scale-105');
+            }
+        });
+        updatePreview();
+    }
+
+    // Density Selection
+    function selectDensity(element, val) {
+        document.querySelectorAll('input[name="layout_density"]').forEach(r => {
+            r.parentElement.classList.remove('border-primary', 'bg-indigo-50/60', 'font-bold', 'text-primary', 'ring-2', 'ring-primary', 'ring-offset-1');
+            r.parentElement.classList.add('border-slate-200', 'text-slate-600');
+        });
+        element.classList.remove('border-slate-200', 'text-slate-600');
+        element.classList.add('border-primary', 'bg-indigo-50/60', 'font-bold', 'text-primary', 'ring-2', 'ring-primary', 'ring-offset-1');
+        element.querySelector('input').checked = true;
+    }
+
+    // Live Iframe Preview Reload
+    function updatePreview() {
+        const activeThemeEl = document.querySelector('input[name="theme"]:checked');
+        const theme = activeThemeEl ? activeThemeEl.value : 'default';
+        const color = document.getElementById('accentColorInput').value || '#4f46e5';
+        const iframe = document.getElementById('previewIframe');
+        if (iframe) {
+            iframe.src = '/preview_checkout?theme=' + encodeURIComponent(theme) + '&accent_color=' + encodeURIComponent(color);
+        }
+    }
+
+    function refreshPreviewIframe() {
+        updatePreview();
+    }
+</script>
+{% endblock %}

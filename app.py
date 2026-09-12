@@ -995,7 +995,7 @@ def settings():
     user_id = session['user_id']
     user_info = get_user(user_id)
     active_tab = request.args.get('tab', 'profile')
-    if active_tab not in ('profile', 'security', 'appearance'):
+    if active_tab not in ('profile', 'security'):
         active_tab = 'profile'
     
     conn = sqlite3.connect(DB_FILE)
@@ -1454,34 +1454,45 @@ def settings_disable_2fa():
     conn.close()
     return redirect(url_for('settings', tab='security', success='Two-Factor Authentication has been disabled.'))
 
-# 6. APPEARANCE
+# 6. APPEARANCE & CUSTOMIZATION
+@app.route('/appearance', methods=['GET', 'POST'])
+@app.route('/customize_appearance', methods=['GET', 'POST'])
+@login_required
+def appearance():
+    user_id = session['user_id']
+    user_info = get_user(user_id)
+    
+    if request.method == 'POST':
+        if not verify_csrf():
+            return redirect(url_for('appearance', error='Security check failed (invalid CSRF).'))
+            
+        theme = request.form.get('theme', 'default')
+        accent_color = request.form.get('accent_color', '#4f46e5').strip()
+        layout_density = request.form.get('layout_density', 'comfortable')
+        
+        if not re.match(r'^#[0-9a-fA-F]{6}$', accent_color):
+            accent_color = '#4f46e5'
+            
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("UPDATE users SET theme=?, accent_color=?, layout_density=? WHERE user_id=?", 
+                  (theme, accent_color, layout_density, user_id))
+        conn.commit()
+        conn.close()
+        
+        return redirect(url_for('appearance', success='Appearance settings updated successfully!'))
+        
+    return render_template('appearance.html', user_info=user_info)
+
 @app.route('/settings/appearance', methods=['POST'])
 @login_required
 def settings_appearance():
-    if not verify_csrf():
-        return redirect(url_for('settings', tab='appearance', error='Security check failed (invalid CSRF).'))
-        
-    user_id = session['user_id']
-    theme = request.form.get('theme', 'default')
-    accent_color = request.form.get('accent_color', '#4f46e5').strip()
-    layout_density = request.form.get('layout_density', 'comfortable')
-    
-    if not re.match(r'^#[0-9a-fA-F]{6}$', accent_color):
-        accent_color = '#4f46e5'
-        
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("UPDATE users SET theme=?, accent_color=?, layout_density=? WHERE user_id=?", 
-              (theme, accent_color, layout_density, user_id))
-    conn.commit()
-    conn.close()
-    
-    return redirect(url_for('settings', tab='appearance', success='Appearance settings updated!'))
+    return appearance()
 
 @app.route('/save_customize', methods=['POST'])
 @login_required
 def save_customize():
-    return redirect(url_for('settings', tab='appearance'))
+    return appearance()
 
 @app.route('/delete_account')
 @login_required
