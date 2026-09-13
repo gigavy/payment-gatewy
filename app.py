@@ -1,4 +1,4 @@
-﻿import os
+import os
 import re
 import time
 import uuid
@@ -783,6 +783,23 @@ def google_callback():
         c.execute("""INSERT INTO users (username, email, google_id, display_name, profile_pic, auth_provider, created_at, role, plan_name)
                      VALUES (%s, %s, %s, %s, %s, 'google', %s, 'merchant', 'Free') RETURNING user_id""",
                   (username, google_email, google_id, display_name, profile_pic, now_str))
+        user_id = c.fetchone()[0]
+        conn.commit()
+        conn.close()
+        add_sys_log(user_id, f"Registered new merchant account via Google ({google_email}).")
+        
+    establish_user_session(user_id)
+    return redirect(url_for('dashboard'))
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        return render_template('login.html', error='Manual credentials are disabled. Please sign in using your verified Google Account.')
+    return render_template('login.html')
+
+@app.route('/login/2fa', methods=['GET', 'POST'])
+def login_2fa():
+    user_id = session.get('pending_2fa_user_id')
     if not user_id:
         return redirect(url_for('login'))
         
@@ -982,7 +999,7 @@ def dashboard():
     for i in range(6, -1, -1):
         dt = datetime.now() - timedelta(days=i)
         d_str = dt.strftime('%Y-%m-%d')
-        c.execute("SELECT SUM(amount) FROM transactions WHERE user_id=%s AND status='completed' AND paid_at LIKE ?", (user_id, f"{d_str}%"))
+        c.execute("SELECT SUM(amount) FROM transactions WHERE user_id=%s AND status='completed' AND paid_at LIKE %s", (user_id, f"{d_str}%"))
         daily_sum = c.fetchone()[0] or 0
         chart_labels.append(dt.strftime('%d %b'))
         chart_data.append(daily_sum)
@@ -1680,7 +1697,7 @@ def transactions():
     
     # Let's count expired (pending but past expires_at)
     now_iso = datetime.now().isoformat()
-    c.execute("SELECT COUNT(*) FROM transactions WHERE user_id=%s AND status='pending' AND expires_at < ?", (user_id, now_iso))
+    c.execute("SELECT COUNT(*) FROM transactions WHERE user_id=%s AND status='pending' AND expires_at < %s", (user_id, now_iso))
     expired_count = c.fetchone()[0] or 0
     
     # Fetch all transactions
