@@ -1,4 +1,4 @@
-﻿{% extends 'admin_base.html' %}
+{% extends 'admin_base.html' %}
 
 {% block content %}
 <div class="mb-8 flex items-center gap-3">
@@ -33,14 +33,14 @@
                 <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                     <td class="p-3">
                         <span class="font-mono text-xs font-bold text-slate-500">#{{ p[0] }}</span><br>
-                        <span class="text-[9px] text-slate-400">{{ p[6][:10] }}</span>
+                        <span class="text-[9px] text-slate-400">{{ (p[6]|string)[:10] }}</span>
                     </td>
                     <td class="p-3">
                         <div class="font-bold text-slate-800">{{ p[1] }}</div>
                         <div class="text-[10px] text-slate-500">{{ p[2] }}</div>
                     </td>
                     <td class="p-3">
-                        <span class="font-black text-slate-800">₹{{ "{:,.2f}".format(p[3]) }}</span>
+                        <span class="font-black text-slate-800">?{{ "{:,.2f}".format(p[3]) }}</span>
                     </td>
                     <td class="p-3">
                         <span class="bg-slate-100 text-slate-600 font-mono text-xs px-2 py-1 rounded">{{ p[4] }}</span>

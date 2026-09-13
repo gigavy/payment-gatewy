@@ -344,7 +344,7 @@
                                 <div class="text-xs text-slate-400 mt-0.5 font-mono flex flex-wrap items-center gap-x-3 gap-y-1">
                                     <span>IP: {{ sess[1] }}</span>
                                     <span>•</span>
-                                    <span>Last Active: {{ sess[4][:16].replace('T', ' ') }}</span>
+                                    <span>Last Active: {{ (sess[4]|string)[:16].replace('T', ' ') }}</span>
                                 </div>
                             </div>
                         </div>

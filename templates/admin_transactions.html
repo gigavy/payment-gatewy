@@ -1,4 +1,4 @@
-﻿{% extends 'admin_base.html' %}
+{% extends 'admin_base.html' %}
 
 {% block content %}
 <div class="mb-8 flex items-center gap-3">
@@ -45,7 +45,7 @@
                         <span class="text-xs font-medium text-slate-600">{{ t[6] if t[6] else 'N/A' }}</span>
                     </td>
                     <td class="p-3 text-right">
-                        <span class="font-black text-slate-800">₹{{ "{:,.2f}".format(t[1]) }}</span>
+                        <span class="font-black text-slate-800">?{{ "{:,.2f}".format(t[1]) }}</span>
                     </td>
                     <td class="p-3 text-center">
                         {% if t[2] == 'completed' %}
@@ -57,7 +57,7 @@
                         {% endif %}
                     </td>
                     <td class="p-3 text-right text-xs text-slate-500 font-medium">
-                        {{ t[3][:16].replace('T', ' ') }}
+                        {{ (t[3]|string)[:16].replace('T', ' ') }}
                     </td>
                 </tr>
                 {% endfor %}

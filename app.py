@@ -1137,7 +1137,7 @@ def settings():
     
     conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
     c = conn.cursor(cursor_factory=DictCursor)
-    c.execute("""SELECT session_id, ip_address, device_summary, created_at, last_active_at, session_token 
+    c.execute("""SELECT session_id, ip_address, device_summary, created_at, CAST(last_active_at AS TEXT), session_token 
                  FROM user_sessions 
                  WHERE user_id=%s AND is_active=1 
                  ORDER BY last_active_at DESC""", (user_id,))
