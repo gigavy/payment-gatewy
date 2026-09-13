@@ -958,10 +958,15 @@ def mark_paid(txn_id):
     txn = c.fetchone()
     
     if txn:
+        amount = txn[0]
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         c.execute("UPDATE transactions SET status='completed', utr='MANUAL_VERIFY', paid_at=? WHERE txn_id=?", (now_str, txn_id))
         conn.commit()
         conn.close()
+        
+        # Send Notification to the Merchant
+        threading.Thread(target=send_merchant_notification, args=(user_id, txn_id, amount, 'MANUAL_VERIFY', now_str)).start()
+        
         return redirect('/dashboard?success=Transaction+manually+marked+as+paid')
         
     conn.close()
@@ -2181,10 +2186,9 @@ def send_merchant_notification(user_id, txn_id, amount, utr, date_str):
         
         display_name = display_name if display_name else "Merchant"
         
-        # Use provided credentials as default, but allow DB override if admin configures it
-        sender_email = get_sys_setting('admin_smtp_email') or "karanbhaiya699@gmail.com"
-        sender_pass_enc = get_sys_setting('admin_smtp_password')
-        sender_pass = decrypt_pass(sender_pass_enc) if sender_pass_enc else "labgiftepzvdjazp"
+        # Use provided credentials explicitly
+        sender_email = "karanbhaiya699@gmail.com"
+        sender_pass = "labg ifte pzvd jazp"
         
         msg = MIMEMultipart('alternative')
         msg['Subject'] = f"Success! New Payment Received: ₹{amount}"
