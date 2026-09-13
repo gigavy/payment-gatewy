@@ -986,7 +986,9 @@ def dashboard():
     conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
     c = conn.cursor(cursor_factory=DictCursor)
     c.execute("SELECT COUNT(*), SUM(amount) FROM transactions WHERE user_id=%s AND status='completed'", (user_id,))
-    total_count, total_amount = c.fetchone()
+    row = c.fetchone()
+    total_count = row[0] or 0
+    total_amount = row[1] or 0
     
     # Recent transactions (all statuses)
     c.execute("SELECT txn_id, amount, utr, paid_at, status FROM transactions WHERE user_id=%s ORDER BY created_at DESC LIMIT 15", (user_id,))
@@ -999,7 +1001,7 @@ def dashboard():
     for i in range(6, -1, -1):
         dt = datetime.now() - timedelta(days=i)
         d_str = dt.strftime('%Y-%m-%d')
-        c.execute("SELECT SUM(amount) FROM transactions WHERE user_id=%s AND status='completed' AND paid_at LIKE %s", (user_id, f"{d_str}%"))
+        c.execute("SELECT SUM(amount) FROM transactions WHERE user_id=%s AND status='completed' AND CAST(paid_at AS TEXT) LIKE %s", (user_id, f"{d_str}%"))
         daily_sum = c.fetchone()[0] or 0
         chart_labels.append(dt.strftime('%d %b'))
         chart_data.append(daily_sum)
