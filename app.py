@@ -1911,6 +1911,23 @@ def checkout_page_by_id(txn_id):
     
     conn.close()
     
+    if status == 'completed':
+        return f"""
+        <html>
+        <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Payment Completed</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; background-color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px;">
+            <div style="background-color: white; padding: 40px 20px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; max-width: 400px; width: 100%;">
+                <div style="background-color: #ecfdf5; color: #10b981; width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 40px; margin: 0 auto 24px auto;">✓</div>
+                <h2 style="color: #0f172a; margin: 0 0 12px 0; font-size: 24px;">Payment Completed</h2>
+                <p style="color: #64748b; margin: 0; line-height: 1.5; font-size: 15px;">This payment link has already been paid successfully and is now closed.</p>
+            </div>
+        </body>
+        </html>
+        """
+    
     user = get_user(user_id)
     if not user or not user.get('upi_id'):
         return "<h1>Error: Merchant account not configured properly</h1>", 400
