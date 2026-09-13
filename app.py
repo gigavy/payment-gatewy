@@ -2176,24 +2176,26 @@ def send_merchant_notification(user_id, txn_id, amount, utr, date_str):
     try:
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
-        c.execute("SELECT email, display_name FROM users WHERE user_id=?", (user_id,))
+        c.execute("SELECT email, gmail, display_name FROM users WHERE user_id=?", (user_id,))
         row = c.fetchone()
         conn.close()
         
         if not row: return
-        merchant_email, display_name = row
-        if not merchant_email or '@' not in merchant_email: return
+        merchant_email, merchant_gmail, display_name = row
+        
+        final_email = merchant_email if merchant_email and '@' in merchant_email else merchant_gmail
+        if not final_email or '@' not in final_email: return
         
         display_name = display_name if display_name else "Merchant"
         
         # Use provided credentials explicitly
         sender_email = "karanbhaiya699@gmail.com"
-        sender_pass = "labg ifte pzvd jazp"
+        sender_pass = "labgiftepzvdjazp"
         
         msg = MIMEMultipart('alternative')
         msg['Subject'] = f"Success! New Payment Received: ₹{amount}"
         msg['From'] = f"NovaPay System <{sender_email}>"
-        msg['To'] = merchant_email
+        msg['To'] = final_email
         
         html = f'''
         <html>
@@ -2233,7 +2235,7 @@ def send_merchant_notification(user_id, txn_id, amount, utr, date_str):
         
         server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
         server.login(sender_email, sender_pass)
-        server.sendmail(sender_email, merchant_email, msg.as_string())
+        server.sendmail(sender_email, final_email, msg.as_string())
         server.quit()
     except Exception as e:
         print(f"Error sending merchant notification: {e}")
