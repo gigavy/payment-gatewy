@@ -1,4 +1,4 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 
 {% block content %}
 <div class="mb-8">
@@ -90,6 +90,31 @@
     
     <!-- Right Column: Methods & Quick Actions -->
     <div class="flex flex-col gap-6">
+        <!-- Plan & Usage Meter -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-base font-bold text-slate-800">Plan Usage</h3>
+                <span class="text-xs font-bold px-2 py-1 bg-indigo-50 text-indigo-600 rounded-md border border-indigo-100">{{ user_info.plan_name }} Plan</span>
+            </div>
+            <div class="mb-2 flex justify-between text-xs font-medium text-slate-600">
+                <span>Payment Links Created</span>
+                <span class="font-bold text-slate-800">{{ user_info.links_used }} / {{ user_info.links_limit }}</span>
+            </div>
+            <div class="w-full bg-slate-100 rounded-full h-2 mb-4 overflow-hidden border border-slate-200">
+                {% set usage_pct = (user_info.links_used / user_info.links_limit) * 100 %}
+                {% if usage_pct > 100 %}{% set usage_pct = 100 %}{% endif %}
+                <div class="h-2 rounded-full {% if usage_pct >= 100 %}bg-red-500{% elif usage_pct >= 80 %}bg-amber-500{% else %}bg-emerald-500{% endif %} transition-all duration-500" style="width: {{ usage_pct }}%"></div>
+            </div>
+            {% if user_info.links_used >= user_info.links_limit %}
+            <div class="bg-red-50 p-3 rounded-lg border border-red-100 text-xs text-red-700 mb-3 font-medium">
+                <i class="fa-solid fa-circle-exclamation mr-1"></i> You have reached your plan limit. You cannot create any new payment links until you upgrade.
+            </div>
+            {% endif %}
+            <a href="/plans" class="w-full block text-center text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white py-2 rounded-lg transition-colors">
+                Upgrade Plan
+            </a>
+        </div>
+        
         <!-- Payment Methods -->
         <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 h-full">
             <div class="flex justify-between items-center mb-6">

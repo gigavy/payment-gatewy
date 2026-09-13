@@ -218,7 +218,9 @@ def init_db():
             accent_color TEXT DEFAULT '#4f46e5',
             layout_density TEXT DEFAULT 'comfortable',
             google_id TEXT UNIQUE,
-            auth_provider TEXT DEFAULT 'local'
+            auth_provider TEXT DEFAULT 'local',
+            links_used INTEGER DEFAULT 0,
+            is_admin_bypass INTEGER DEFAULT 0
         )
     ''')
     
@@ -342,7 +344,9 @@ def init_db():
         ('accent_color', "TEXT DEFAULT '#4f46e5'"),
         ('layout_density', "TEXT DEFAULT 'comfortable'"),
         ('google_id', "TEXT UNIQUE"),
-        ('auth_provider', "TEXT DEFAULT 'local'")
+        ('auth_provider', "TEXT DEFAULT 'local'"),
+        ('links_used', "INTEGER DEFAULT 0"),
+        ('is_admin_bypass', "INTEGER DEFAULT 0")
     ]
     for col, col_def in user_migrations:
         if col not in existing_user_cols:
@@ -421,7 +425,9 @@ def get_user(user_id):
             "layout_density": d.get("layout_density") or "comfortable",
             "password_hash": d.get("password_hash"),
             "google_id": d.get("google_id"),
-            "auth_provider": d.get("auth_provider") or "local"
+            "auth_provider": d.get("auth_provider") or "local",
+            "links_used": d.get("links_used") or 0,
+            "links_limit": 31 if (d.get("plan_name") == "Basic") else (66 if d.get("plan_name") == "Pro" else 1)
         }
     return None
 
@@ -506,7 +512,7 @@ def check_plan_expiry():
             row = c.fetchone()
             if row and row[0]:
                 expiry_date = datetime.fromisoformat(row[0])
-                if datetime.now() > expiry_date:
+                if datetime.now() > expiry_date + timedelta(days=3):
                     c.execute("UPDATE users SET plan_name='Free', plan_expiry=NULL WHERE user_id=?", (session['user_id'],))
                     conn.commit()
             conn.close()
@@ -865,7 +871,7 @@ def admin_update_plan():
         expiry_date = None
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("UPDATE users SET plan_name=?, plan_expiry=? WHERE user_id=?", (new_plan, expiry_date, target_user))
+    c.execute("UPDATE users SET plan_name=?, plan_expiry=?, links_used=0 WHERE user_id=?", (new_plan, expiry_date, target_user))
     conn.commit()
     conn.close()
     return redirect('/admin/users?success=Plan updated successfully')
@@ -1634,8 +1640,9 @@ def payment_links():
     c.execute("SELECT txn_id, amount, status, created_at FROM transactions WHERE user_id=? ORDER BY created_at DESC", (user_id,))
     links = c.fetchall()
     conn.close()
-    
-    return render_template('payment_links.html', user_info=user_info, links=links)
+    error = request.args.get('error')
+    success = request.args.get('success')
+    return render_template('payment_links.html', user_info=user_info, links=links, error=error, success=success)
     
 @app.route('/transactions')
 @login_required
@@ -1705,9 +1712,40 @@ def generate_link():
 
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
+    
+    # ATOMIC LIMIT CHECK
+    c.execute('''
+        UPDATE users 
+        SET links_used = links_used + 1 
+        WHERE user_id = ? AND (
+            is_admin_bypass = 1 OR 
+            links_used < (
+                CASE plan_name 
+                    WHEN 'Free' THEN 1 
+                    WHEN 'Basic' THEN 31 
+                    WHEN 'Pro' THEN 66 
+                    ELSE 1 
+                END
+            )
+        )
+    ''', (user_id,))
+    
+    if c.rowcount == 0:
+        conn.close()
+        return redirect(url_for('payment_links', error='Your plan limit reached. Please upgrade to continue creating links.'))
+    
     c.execute('''INSERT INTO transactions (txn_id, user_id, amount, status, created_at, expires_at, customer_email)
                  VALUES (?, ?, ?, 'pending', ?, ?, ?)''', 
               (txn_id, user_id, amount, now.isoformat(), expires.isoformat(), customer_email))
+    
+    c.execute("SELECT links_used, plan_name FROM users WHERE user_id = ?", (user_id,))
+    usage_row = c.fetchone()
+    if usage_row:
+        l_used, p_name = usage_row
+        limit = 1 if p_name == 'Free' else (31 if p_name == 'Basic' else (66 if p_name == 'Pro' else 1))
+        if l_used == int(limit * 0.8) and limit > 1:
+            threading.Thread(target=send_telegram_quota_alert, args=(user_id, l_used, limit, p_name)).start()
+
     conn.commit()
     conn.close()
 
@@ -1785,9 +1823,39 @@ def api_create_order():
     now = datetime.now()
     expires = now + timedelta(minutes=merchant_ttl)
 
+    # ATOMIC LIMIT CHECK
+    c.execute('''
+        UPDATE users 
+        SET links_used = links_used + 1 
+        WHERE user_id = ? AND (
+            is_admin_bypass = 1 OR 
+            links_used < (
+                CASE plan_name 
+                    WHEN 'Free' THEN 1 
+                    WHEN 'Basic' THEN 31 
+                    WHEN 'Pro' THEN 66 
+                    ELSE 1 
+                END
+            )
+        )
+    ''', (user_id,))
+    
+    if c.rowcount == 0:
+        conn.close()
+        return jsonify({"status": "error", "message": "Plan limit reached. Please upgrade to continue."}), 403
+        
     c.execute('''INSERT INTO transactions (txn_id, user_id, amount, status, created_at, expires_at, merchant_order_id, customer_name, callback_url)
                  VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?)''', 
               (txn_id, user_id, amount, now.isoformat(), expires.isoformat(), merchant_order_id, customer_name, callback_url))
+              
+    c.execute("SELECT links_used, plan_name FROM users WHERE user_id = ?", (user_id,))
+    usage_row = c.fetchone()
+    if usage_row:
+        l_used, p_name = usage_row
+        limit = 1 if p_name == 'Free' else (31 if p_name == 'Basic' else (66 if p_name == 'Pro' else 1))
+        if l_used == int(limit * 0.8) and limit > 1:
+            threading.Thread(target=send_telegram_quota_alert, args=(user_id, l_used, limit, p_name)).start()
+            
     conn.commit()
     conn.close()
     
@@ -2100,6 +2168,27 @@ def send_telegram_alert(user_id, txn_id, amount, utr):
             }, timeout=5)
     except Exception as e:
         print(f"Telegram alert error: {e}")
+
+def send_telegram_quota_alert(user_id, l_used, limit, p_name):
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("SELECT telegram_bot_token_enc, telegram_chat_id_enc FROM users WHERE user_id=?", (user_id,))
+        row = c.fetchone()
+        conn.close()
+        if row and row[0] and row[1]:
+            token = decrypt_pass(row[0])
+            chat_id = decrypt_pass(row[1])
+            msg = (f"⚠️ *Low Quota Alert!*\n\n"
+                   f"You have used *{l_used}/{limit}* payment links on your *{p_name}* plan.\n"
+                   f"Please upgrade soon to avoid interruption.")
+            requests.post(f"https://api.telegram.org/bot{token}/sendMessage", json={
+                "chat_id": chat_id,
+                "text": msg,
+                "parse_mode": "Markdown"
+            }, timeout=5)
+    except Exception as e:
+        print(f"Telegram quota alert error: {e}")
 
 def send_webhook(user_id, callback_url, txn_id, merchant_order_id, amount, utr):
     try:
@@ -2427,6 +2516,106 @@ def system_logs_api():
     conn.close()
     
     return jsonify([{"msg": log[0], "time": log[1]} for log in logs])
+
+# ============================================
+# SUBSCRIPTION PLAN SYSTEM
+@app.route('/plans')
+@login_required
+def plans():
+    user_info = get_user(session['user_id'])
+    return render_template('subscription.html', user_info=user_info)
+
+@app.route('/upgrade_plan', methods=['POST'])
+@login_required
+def upgrade_plan():
+    target_user_id = session['user_id']
+    plan_name = request.form.get('plan_name')
+    if plan_name not in ['Basic', 'Pro']:
+        return redirect(url_for('payment_links', error='Invalid plan selected.'))
+        
+    amount = 30.0 if plan_name == 'Basic' else 60.0
+    
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    # Find the Admin user (assumed role='admin', or fallback to user_id=1)
+    c.execute("SELECT user_id FROM users WHERE role='admin' ORDER BY user_id ASC LIMIT 1")
+    admin_row = c.fetchone()
+    if not admin_row:
+        # Fallback if no admin is set, fallback to user_id 1
+        admin_row = (1,)
+        
+    admin_user_id = admin_row[0]
+    
+    txn_id = f"SUB{int(time.time())}{uuid.uuid4().hex[:4].upper()}"
+    now = datetime.now()
+    expires = now + timedelta(minutes=15)
+    merchant_order_id = f"sub_upgrade|{target_user_id}|{plan_name}"
+    callback_url = f"{request.host_url.rstrip('/')}/api/subscription_webhook"
+    
+    c.execute('''INSERT INTO transactions (txn_id, user_id, amount, status, created_at, expires_at, merchant_order_id, callback_url)
+                 VALUES (?, ?, ?, 'pending', ?, ?, ?, ?)''', 
+              (txn_id, admin_user_id, amount, now.isoformat(), expires.isoformat(), merchant_order_id, callback_url))
+    conn.commit()
+    conn.close()
+    
+    return redirect(f"/pay/{txn_id}")
+
+@app.route('/api/subscription_webhook', methods=['POST'])
+def subscription_webhook():
+    signature = request.headers.get('X-NovaPay-Signature')
+    timestamp = request.headers.get('X-NovaPay-Timestamp')
+    
+    if not signature or not timestamp:
+        return jsonify({'status': 'error', 'message': 'Missing signature'}), 401
+        
+    data = request.json
+    if not data or data.get('status') != 'success':
+        return jsonify({'status': 'ignored'}), 200
+        
+    merchant_order_id = data.get('merchant_order_id', '')
+    if not merchant_order_id.startswith('sub_upgrade|'):
+        return jsonify({'status': 'ignored'}), 200
+        
+    parts = merchant_order_id.split('|')
+    if len(parts) != 3:
+        return jsonify({'status': 'error', 'message': 'Invalid order ID'}), 400
+        
+    target_user_id = parts[1]
+    plan_name = parts[2]
+    
+    # We must verify the signature using the Admin's API key
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    
+    c.execute("SELECT user_id, api_key FROM users WHERE role='admin' ORDER BY user_id ASC LIMIT 1")
+    admin_row = c.fetchone()
+    if not admin_row:
+        c.execute("SELECT user_id, api_key FROM users WHERE user_id=1")
+        admin_row = c.fetchone()
+        
+    if not admin_row or not admin_row[1]:
+        conn.close()
+        return jsonify({'status': 'error', 'message': 'Admin API key missing'}), 500
+        
+    admin_api_key = admin_row[1]
+    
+    payload_str = request.get_data(as_text=True)
+    sign_material = f"{timestamp}.{payload_str}"
+    expected_sig = hmac.new(admin_api_key.encode('utf-8'), sign_material.encode('utf-8'), hashlib.sha256).hexdigest()
+    
+    if not hmac.compare_digest(signature, expected_sig):
+        conn.close()
+        return jsonify({'status': 'error', 'message': 'Invalid signature'}), 401
+        
+    # Upgrade User
+    # 30 day expiry
+    plan_expiry = (datetime.now() + timedelta(days=30)).isoformat()
+    # RESET links_used to 0 to unlock fresh capacity!
+    c.execute("UPDATE users SET plan_name=?, plan_expiry=?, links_used=0 WHERE user_id=?", (plan_name, plan_expiry, target_user_id))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'status': 'success'})
 
 def start_background_workers():
     if not getattr(app, '_bg_workers_started', False):

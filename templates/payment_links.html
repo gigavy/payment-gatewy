@@ -1,4 +1,4 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 
 {% block content %}
 <div class="mb-8">
@@ -11,6 +11,23 @@
 </div>
 
 <div class="grid grid-cols-1 gap-8 mb-8">
+    {% if error %}
+    <div class="bg-red-50 border border-red-100 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between shadow-sm">
+        <div class="flex items-center gap-3">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span class="font-medium text-sm">{{ error }}</span>
+        </div>
+        {% if 'plan limit' in error|lower %}
+        <a href="/plans" class="text-xs font-bold bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded transition-colors">View Plans</a>
+        {% endif %}
+    </div>
+    {% endif %}
+    {% if success %}
+    <div class="bg-emerald-50 border border-emerald-100 text-emerald-700 px-4 py-3 rounded-lg flex items-center gap-3 shadow-sm">
+        <i class="fa-solid fa-circle-check"></i>
+        <span class="font-medium text-sm">{{ success }}</span>
+    </div>
+    {% endif %}
     
     <!-- Generate Payment Link -->
     <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
