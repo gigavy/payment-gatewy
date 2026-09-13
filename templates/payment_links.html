@@ -139,12 +139,14 @@
                                     <button onclick="copyToClipboard('{{ request.host_url.rstrip('/') }}/pay/{{ link[0] }}')" class="px-3 py-1.5 rounded border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800 font-bold text-xs transition-colors flex items-center gap-1.5">
                                         <i class="fa-regular fa-copy"></i> Copy
                                     </button>
+                                    {% if link[2] == 'pending' %}
                                     <button onclick="expireTxn('{{ link[0] }}')" class="px-3 py-1.5 rounded border border-amber-200 text-amber-600 hover:bg-amber-50 hover:text-amber-700 font-bold text-xs transition-colors flex items-center gap-1.5">
                                         <i class="fa-regular fa-clock"></i> Expire
                                     </button>
                                     <button onclick="disableTxn('{{ link[0] }}')" class="px-3 py-1.5 rounded border border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 font-bold text-xs transition-colors flex items-center gap-1.5">
                                         <i class="fa-solid fa-ban"></i> Disable
                                     </button>
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>
