@@ -126,7 +126,7 @@
             <div class="feature-item"><i class="fa-regular fa-circle-check check-icon text-blue-500"></i> <span class="text-slate-700">Email Support</span></div>
         </div>
         <form action="/upgrade_plan" method="POST">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="plan_name" value="Basic">
             <button type="submit" class="btn-sub dark">Upgrade to Basic <i class="fa-solid fa-arrow-right text-xs"></i></button>
         </form>
@@ -148,7 +148,7 @@
             <div class="feature-item"><i class="fa-regular fa-circle-check check-icon text-purple-500"></i> <span class="text-slate-700">Priority Support</span></div>
         </div>
         <form action="/upgrade_plan" method="POST">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="plan_name" value="Pro">
             <button type="submit" class="btn-sub">Upgrade to Pro <i class="fa-solid fa-arrow-right text-xs"></i></button>
         </form>
