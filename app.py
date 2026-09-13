@@ -1,4 +1,4 @@
-import os
+﻿import os
 import re
 import time
 import uuid
@@ -482,7 +482,7 @@ def add_admin_log(type_str, msg):
     try:
         conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
         c = conn.cursor(cursor_factory=DictCursor)
-        c.execute("INSERT INTO admin_logs (type, message, created_at) VALUES (?, ?, ?)", (type_str, msg, datetime.now().isoformat()))
+        c.execute("INSERT INTO admin_logs (type, message, created_at) VALUES (%s, %s, %s)", (type_str, msg, datetime.now().isoformat()))
         conn.commit()
         conn.close()
     except:
@@ -500,7 +500,7 @@ PLAN_LIMITS = {
 
 @app.before_request
 def check_maintenance():
-    if request.path.startswith('/admin') or request.path.startswith('/static') or request.path == '/api/create-order' or request.path.startswith('/pay'):
+    if request.path.startswith('/admin') or request.path.startswith('/static'):
         return
     if get_sys_setting('maintenance_mode') == 'true':
         return "<h1>Platform Under Maintenance</h1><p>We are upgrading our systems. Please check back in a few minutes.</p>", 503
@@ -657,7 +657,7 @@ def establish_user_session(user_id):
     conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
     c = conn.cursor(cursor_factory=DictCursor)
     c.execute("""INSERT INTO user_sessions (session_id, user_id, session_token, ip_address, user_agent, device_summary, created_at, last_active_at, is_active)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)""", (session_id, user_id, session_token, ip, ua, summary, now_str, now_str))
+                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 1)""", (session_id, user_id, session_token, ip, ua, summary, now_str, now_str))
     conn.commit()
     conn.close()
     
@@ -677,6 +677,7 @@ def get_google_redirect_uri():
     if request.is_secure:
         proto = 'https'
     return f"{proto}://{host}/login/google/callback"
+
 
 @app.route('/login/google')
 def login_google():
@@ -761,7 +762,7 @@ def google_callback():
     c = conn.cursor(cursor_factory=DictCursor)
     
     # 3. Check for existing user by google_id or verified email
-    c.execute("SELECT user_id, password_hash, google_id FROM users WHERE (google_id IS NOT NULL AND google_id = %s) OR LOWER(email) = ? OR LOWER(username) = ?", 
+    c.execute("SELECT user_id, password_hash, google_id FROM users WHERE (google_id IS NOT NULL AND google_id = %s) OR LOWER(email) = %s OR LOWER(username) = %s", 
               (google_id, google_email, google_email))
     row = c.fetchone()
     
@@ -782,23 +783,6 @@ def google_callback():
         c.execute("""INSERT INTO users (username, email, google_id, display_name, profile_pic, auth_provider, created_at, role, plan_name)
                      VALUES (%s, %s, %s, %s, %s, 'google', %s, 'merchant', 'Free') RETURNING user_id""",
                   (username, google_email, google_id, display_name, profile_pic, now_str))
-        user_id = c.fetchone()[0]
-        conn.commit()
-        conn.close()
-        add_sys_log(user_id, f"Registered new merchant account via Google ({google_email}).")
-        
-    establish_user_session(user_id)
-    return redirect(url_for('dashboard'))
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        return render_template('login.html', error='Manual credentials are disabled. Please sign in using your verified Google Account.')
-    return render_template('login.html')
-
-@app.route('/login/2fa', methods=['GET', 'POST'])
-def login_2fa():
-    user_id = session.get('pending_2fa_user_id')
     if not user_id:
         return redirect(url_for('login'))
         
@@ -984,7 +968,7 @@ def dashboard():
     # Get stats
     conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
     c = conn.cursor(cursor_factory=DictCursor)
-    c.execute("SELECT COUNT(*), SUM(amount) FROM transactions WHERE user_id=? AND status='completed'", (user_id,))
+    c.execute("SELECT COUNT(*), SUM(amount) FROM transactions WHERE user_id=%s AND status='completed'", (user_id,))
     total_count, total_amount = c.fetchone()
     
     # Recent transactions (all statuses)
@@ -998,7 +982,7 @@ def dashboard():
     for i in range(6, -1, -1):
         dt = datetime.now() - timedelta(days=i)
         d_str = dt.strftime('%Y-%m-%d')
-        c.execute("SELECT SUM(amount) FROM transactions WHERE user_id=? AND status='completed' AND paid_at LIKE ?", (user_id, f"{d_str}%"))
+        c.execute("SELECT SUM(amount) FROM transactions WHERE user_id=%s AND status='completed' AND paid_at LIKE ?", (user_id, f"{d_str}%"))
         daily_sum = c.fetchone()[0] or 0
         chart_labels.append(dt.strftime('%d %b'))
         chart_data.append(daily_sum)
@@ -1683,20 +1667,20 @@ def transactions():
     c = conn.cursor(cursor_factory=DictCursor)
     
     # Stats
-    c.execute("SELECT SUM(amount), COUNT(*) FROM transactions WHERE user_id=? AND status='completed'", (user_id,))
+    c.execute("SELECT SUM(amount), COUNT(*) FROM transactions WHERE user_id=%s AND status='completed'", (user_id,))
     row = c.fetchone()
     collected_amount = row[0] or 0.0
     collected_count = row[1] or 0
     
-    c.execute("SELECT COUNT(*) FROM transactions WHERE user_id=? AND status='pending'", (user_id,))
+    c.execute("SELECT COUNT(*) FROM transactions WHERE user_id=%s AND status='pending'", (user_id,))
     pending_count = c.fetchone()[0] or 0
     
-    c.execute("SELECT COUNT(*) FROM transactions WHERE user_id=? AND status='failed'", (user_id,))
+    c.execute("SELECT COUNT(*) FROM transactions WHERE user_id=%s AND status='failed'", (user_id,))
     failed_count = c.fetchone()[0] or 0
     
     # Let's count expired (pending but past expires_at)
     now_iso = datetime.now().isoformat()
-    c.execute("SELECT COUNT(*) FROM transactions WHERE user_id=? AND status='pending' AND expires_at < ?", (user_id, now_iso))
+    c.execute("SELECT COUNT(*) FROM transactions WHERE user_id=%s AND status='pending' AND expires_at < ?", (user_id, now_iso))
     expired_count = c.fetchone()[0] or 0
     
     # Fetch all transactions
@@ -1764,7 +1748,7 @@ def generate_link():
         return redirect(url_for('payment_links', error='Your plan limit reached. Please upgrade to continue creating links.'))
     
     c.execute('''INSERT INTO transactions (txn_id, user_id, amount, status, created_at, expires_at, customer_email)
-                 VALUES (?, ?, ?, 'pending', ?, ?, ?)''', 
+                 VALUES (%s, %s, %s, 'pending', %s, %s, %s)''', 
               (txn_id, user_id, amount, now.isoformat(), expires.isoformat(), customer_email))
     
     c.execute("SELECT links_used, plan_name FROM users WHERE user_id = %s", (user_id,))
@@ -1874,7 +1858,7 @@ def api_create_order():
         return jsonify({"status": "error", "message": "Plan limit reached. Please upgrade to continue."}), 403
         
     c.execute('''INSERT INTO transactions (txn_id, user_id, amount, status, created_at, expires_at, merchant_order_id, customer_name, callback_url)
-                 VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?)''', 
+                 VALUES (%s, %s, %s, 'pending', %s, %s, %s, %s, %s)''', 
               (txn_id, user_id, amount, now.isoformat(), expires.isoformat(), merchant_order_id, customer_name, callback_url))
               
     c.execute("SELECT links_used, plan_name FROM users WHERE user_id = %s", (user_id,))
@@ -2022,7 +2006,7 @@ def checkout_page_legacy():
     expires = now + timedelta(minutes=expiry_mins)
 
     c.execute('''INSERT INTO transactions (txn_id, user_id, amount, status, created_at, expires_at)
-                 VALUES (?, ?, ?, 'pending', ?, ?)''', 
+                 VALUES (%s, %s, %s, 'pending', %s, %s)''', 
               (txn_id, user_id, amount, now.isoformat(), expires.isoformat()))
     conn.commit()
     conn.close()
@@ -2113,7 +2097,7 @@ def add_sys_log(user_id, msg):
         conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
         c = conn.cursor(cursor_factory=DictCursor)
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        c.execute("INSERT INTO system_logs (user_id, log_msg, log_time) VALUES (?, ?, ?)", (user_id, msg, now_str))
+        c.execute("INSERT INTO system_logs (user_id, log_msg, log_time) VALUES (%s, %s, %s)", (user_id, msg, now_str))
         # Keep only last 100 logs per user to avoid DB bloat
         c.execute("DELETE FROM system_logs WHERE id NOT IN (SELECT id FROM system_logs WHERE user_id=%s ORDER BY id DESC LIMIT 100)", (user_id,))
         conn.commit()
@@ -2357,7 +2341,7 @@ def send_webhook(user_id, callback_url, txn_id, merchant_order_id, amount, utr):
             
         now_str = datetime.now().isoformat()
         c.execute('''INSERT INTO webhook_logs (user_id, txn_id, url, payload, response_code, response_body, sent_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                     VALUES (%s, %s, %s, %s, %s, %s, %s)''',
                   (user_id, txn_id, callback_url, payload_str, response_code, response_body, now_str))
         conn.commit()
         conn.close()
@@ -2670,7 +2654,7 @@ def upgrade_plan():
     callback_url = f"{request.host_url.rstrip('/')}/api/subscription_webhook"
     
     c.execute('''INSERT INTO transactions (txn_id, user_id, amount, status, created_at, expires_at, merchant_order_id, callback_url)
-                 VALUES (?, ?, ?, 'pending', ?, ?, ?, ?)''', 
+                 VALUES (%s, %s, %s, 'pending', %s, %s, %s, %s)''', 
               (txn_id, admin_user_id, amount, now.isoformat(), expires.isoformat(), merchant_order_id, callback_url))
     conn.commit()
     conn.close()
@@ -2751,6 +2735,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
