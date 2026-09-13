@@ -2166,6 +2166,73 @@ def send_email_receipt(user_id, customer_email, txn_id, amount, utr, date_str):
         add_sys_log(user_id, f"Email receipt sent to {customer_email}")
     except Exception as e:
         print(f"Email failed: {e}")
+
+def send_merchant_notification(user_id, txn_id, amount, utr, date_str):
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("SELECT email, display_name FROM users WHERE user_id=?", (user_id,))
+        row = c.fetchone()
+        conn.close()
+        
+        if not row: return
+        merchant_email, display_name = row
+        if not merchant_email or '@' not in merchant_email: return
+        
+        display_name = display_name if display_name else "Merchant"
+        
+        # Use provided credentials as default, but allow DB override if admin configures it
+        sender_email = get_sys_setting('admin_smtp_email') or "karanbhaiya699@gmail.com"
+        sender_pass_enc = get_sys_setting('admin_smtp_password')
+        sender_pass = decrypt_pass(sender_pass_enc) if sender_pass_enc else "labgiftepzvdjazp"
+        
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = f"Success! New Payment Received: ₹{amount}"
+        msg['From'] = f"NovaPay System <{sender_email}>"
+        msg['To'] = merchant_email
+        
+        html = f'''
+        <html>
+        <body style="font-family: Arial, sans-serif; background-color: #f4f4f5; padding: 20px;">
+            <div style="max-w-md mx-auto background-color: #ffffff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px; margin: 0 auto;">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <div style="background-color: #10b981; color: white; width: 60px; height: 60px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; margin-bottom: 10px;">₹</div>
+                    <h2 style="color: #1e293b; margin: 0;">Payment Received!</h2>
+                    <p style="color: #64748b; margin-top: 5px; font-size: 14px;">Hello {display_name}, you just received a new payment.</p>
+                </div>
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #0f172a; font-size: 36px; margin: 0;">₹{amount}</h1>
+                </div>
+                <div style="border-top: 1px solid #e2e8f0; padding-top: 20px;">
+                    <div style="margin-bottom: 10px;">
+                        <span style="color: #64748b; font-size: 12px; text-transform: uppercase;">Transaction ID</span><br>
+                        <strong style="color: #1e293b; font-family: monospace;">{txn_id}</strong>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <span style="color: #64748b; font-size: 12px; text-transform: uppercase;">Bank UTR</span><br>
+                        <strong style="color: #10b981; font-family: monospace;">{utr}</strong>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <span style="color: #64748b; font-size: 12px; text-transform: uppercase;">Date</span><br>
+                        <strong style="color: #1e293b;">{date_str}</strong>
+                    </div>
+                </div>
+                <div style="text-align: center; margin-top: 30px; color: #94a3b8; font-size: 12px;">
+                    Powered by NovaPay
+                </div>
+            </div>
+        </body>
+        </html>
+        '''
+        part = MIMEText(html, 'html')
+        msg.attach(part)
+        
+        server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
+        server.login(sender_email, sender_pass)
+        server.sendmail(sender_email, merchant_email, msg.as_string())
+        server.quit()
+    except Exception as e:
+        print(f"Error sending merchant notification: {e}")
         
 def send_telegram_alert(user_id, txn_id, amount, utr):
     try:
@@ -2427,6 +2494,9 @@ def monitor_gmails():
                                     
                                     if email_row and email_row[0]:
                                         threading.Thread(target=send_email_receipt, args=(user_id, email_row[0], completed_txn[0], amount, utr, now_str)).start()
+                                    
+                                    # Send Notification to the Merchant
+                                    threading.Thread(target=send_merchant_notification, args=(user_id, completed_txn[0], amount, utr, now_str)).start()
                                     
                                     if completed_txn[2]:
                                         threading.Thread(target=send_webhook, args=(user_id, completed_txn[2], completed_txn[0], completed_txn[3], amount, utr)).start()
