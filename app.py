@@ -220,7 +220,8 @@ def init_db():
             google_id TEXT UNIQUE,
             auth_provider TEXT DEFAULT 'local',
             links_used INTEGER DEFAULT 0,
-            is_admin_bypass INTEGER DEFAULT 0
+            is_admin_bypass INTEGER DEFAULT 0,
+            free_plan_reset_date TEXT
         )
     ''')
     
@@ -346,7 +347,8 @@ def init_db():
         ('google_id', "TEXT UNIQUE"),
         ('auth_provider', "TEXT DEFAULT 'local'"),
         ('links_used', "INTEGER DEFAULT 0"),
-        ('is_admin_bypass', "INTEGER DEFAULT 0")
+        ('is_admin_bypass', "INTEGER DEFAULT 0"),
+        ('free_plan_reset_date', "TEXT")
     ]
     for col, col_def in user_migrations:
         if col not in existing_user_cols:
@@ -427,7 +429,7 @@ def get_user(user_id):
             "google_id": d.get("google_id"),
             "auth_provider": d.get("auth_provider") or "local",
             "links_used": d.get("links_used") or 0,
-            "links_limit": 31 if (d.get("plan_name") == "Basic") else (66 if d.get("plan_name") == "Pro" else 1)
+            "links_limit": 31 if (d.get("plan_name") == "Basic") else (66 if d.get("plan_name") == "Pro" else 15)
         }
     return None
 
@@ -508,15 +510,36 @@ def check_plan_expiry():
         try:
             conn = sqlite3.connect(DB_FILE)
             c = conn.cursor()
-            c.execute("SELECT plan_expiry FROM users WHERE user_id=?", (session['user_id'],))
+            c.execute("SELECT plan_name, plan_expiry, free_plan_reset_date, created_at FROM users WHERE user_id=?", (session['user_id'],))
             row = c.fetchone()
-            if row and row[0]:
-                expiry_date = datetime.fromisoformat(row[0])
-                if datetime.now() > expiry_date + timedelta(days=3):
-                    c.execute("UPDATE users SET plan_name='Free', plan_expiry=NULL WHERE user_id=?", (session['user_id'],))
-                    conn.commit()
+            if row:
+                plan_name, plan_expiry_str, reset_date_str, created_at = row
+                
+                # Check Paid Plan Expiry
+                if plan_expiry_str:
+                    try:
+                        expiry_date = datetime.fromisoformat(plan_expiry_str)
+                        if datetime.now() > expiry_date + timedelta(days=3):
+                            c.execute("UPDATE users SET plan_name='Free', plan_expiry=NULL WHERE user_id=?", (session['user_id'],))
+                            conn.commit()
+                            plan_name = 'Free'
+                    except: pass
+                
+                # Free Plan Weekly Reset
+                if plan_name == 'Free':
+                    try:
+                        base_date = datetime.fromisoformat(reset_date_str) if reset_date_str else (datetime.fromisoformat(created_at) if created_at else datetime.now())
+                        if datetime.now() > base_date + timedelta(days=7):
+                            new_reset_date = datetime.now().isoformat()
+                            c.execute("UPDATE users SET links_used=0, free_plan_reset_date=? WHERE user_id=?", (new_reset_date, session['user_id']))
+                            conn.commit()
+                    except:
+                        # Fallback if dates are unparseable
+                        new_reset_date = datetime.now().isoformat()
+                        c.execute("UPDATE users SET links_used=0, free_plan_reset_date=? WHERE user_id=?", (new_reset_date, session['user_id']))
+                        conn.commit()
             conn.close()
-        except:
+        except Exception as e:
             pass
 
 @app.route('/admin/login', methods=['GET', 'POST'])
@@ -1721,10 +1744,10 @@ def generate_link():
             is_admin_bypass = 1 OR 
             links_used < (
                 CASE plan_name 
-                    WHEN 'Free' THEN 1 
+                    WHEN 'Free' THEN 15 
                     WHEN 'Basic' THEN 31 
                     WHEN 'Pro' THEN 66 
-                    ELSE 1 
+                    ELSE 15 
                 END
             )
         )
@@ -1742,7 +1765,7 @@ def generate_link():
     usage_row = c.fetchone()
     if usage_row:
         l_used, p_name = usage_row
-        limit = 1 if p_name == 'Free' else (31 if p_name == 'Basic' else (66 if p_name == 'Pro' else 1))
+        limit = 15 if p_name == 'Free' else (31 if p_name == 'Basic' else (66 if p_name == 'Pro' else 15))
         if l_used == int(limit * 0.8) and limit > 1:
             threading.Thread(target=send_telegram_quota_alert, args=(user_id, l_used, limit, p_name)).start()
 
@@ -1831,10 +1854,10 @@ def api_create_order():
             is_admin_bypass = 1 OR 
             links_used < (
                 CASE plan_name 
-                    WHEN 'Free' THEN 1 
+                    WHEN 'Free' THEN 15 
                     WHEN 'Basic' THEN 31 
                     WHEN 'Pro' THEN 66 
-                    ELSE 1 
+                    ELSE 15 
                 END
             )
         )
@@ -1852,7 +1875,7 @@ def api_create_order():
     usage_row = c.fetchone()
     if usage_row:
         l_used, p_name = usage_row
-        limit = 1 if p_name == 'Free' else (31 if p_name == 'Basic' else (66 if p_name == 'Pro' else 1))
+        limit = 15 if p_name == 'Free' else (31 if p_name == 'Basic' else (66 if p_name == 'Pro' else 15))
         if l_used == int(limit * 0.8) and limit > 1:
             threading.Thread(target=send_telegram_quota_alert, args=(user_id, l_used, limit, p_name)).start()
             
