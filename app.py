@@ -314,7 +314,7 @@ def init_db():
 
     # 2. Dynamic column migrations for pre-existing databases
     c.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'users'")
-    existing_user_cols = {row[1] for row in c.fetchall()}
+    existing_user_cols = {row[0] for row in c.fetchall()}
     user_migrations = [
         ('display_name', "TEXT DEFAULT 'Merchant'"),
         ('theme', "TEXT DEFAULT 'default'"),
