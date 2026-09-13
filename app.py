@@ -357,7 +357,7 @@ def init_db():
                 c.execute(f"ALTER TABLE users ADD COLUMN {col} {col_def}")
                 conn.commit()
             except Exception:
-                pass
+                conn.rollback()
 
     c.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'transactions'")
     existing_txn_cols = {row[0] for row in c.fetchall()}
@@ -374,7 +374,7 @@ def init_db():
                 c.execute(f"ALTER TABLE transactions ADD COLUMN {col} {col_def}")
                 conn.commit()
             except Exception:
-                pass
+                conn.rollback()
 
     conn.commit()
     conn.close()
@@ -2116,7 +2116,7 @@ def add_sys_log(user_id, msg):
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         c.execute("INSERT INTO system_logs (user_id, log_msg, log_time) VALUES (%s, %s, %s)", (user_id, msg, now_str))
         # Keep only last 100 logs per user to avoid DB bloat
-        c.execute("DELETE FROM system_logs WHERE id NOT IN (SELECT id FROM system_logs WHERE user_id=%s ORDER BY id DESC LIMIT 100)", (user_id,))
+        c.execute("DELETE FROM system_logs WHERE user_id=%s AND id NOT IN (SELECT id FROM (SELECT id FROM system_logs WHERE user_id=%s ORDER BY id DESC LIMIT 100) AS keep)", (user_id, user_id))
         conn.commit()
         conn.close()
     except Exception as e:
