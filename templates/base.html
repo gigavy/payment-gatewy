@@ -226,6 +226,10 @@
                 <i class="fa-solid fa-key w-5 text-center"></i> API Keys
             </a>
             
+            <a href="/plans" class="sidebar-link {% if request.path == '/plans' %}active{% endif %} flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-300">
+                <i class="fa-solid fa-crown w-5 text-center text-orange-400"></i> Subscription
+            </a>
+            
             <a href="/appearance" class="sidebar-link {% if request.path in ['/appearance', '/customize_appearance'] %}active{% endif %} flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-300">
                 <i class="fa-solid fa-palette w-5 text-center"></i> Customize Appearance
             </a>
