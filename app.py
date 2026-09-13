@@ -4,7 +4,8 @@ import time
 import uuid
 import random
 import email
-import sqlite3
+import psycopg2
+from psycopg2.extras import DictCursor
 import imaplib
 import threading
 import json
@@ -175,20 +176,20 @@ def verify_csrf():
 # ============================================
 
 def init_db():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
     
     # 1. Base table definitions with complete column definitions
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
-            user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id SERIAL PRIMARY KEY,
             username TEXT UNIQUE,
             password_hash TEXT,
             upi_id TEXT,
             gmail TEXT,
             app_pass TEXT,
             api_key TEXT UNIQUE,
-            created_at DATETIME,
+            created_at TIMESTAMP,
             display_name TEXT DEFAULT 'Merchant',
             theme TEXT DEFAULT 'default',
             provider TEXT DEFAULT 'fampay',
@@ -232,9 +233,9 @@ def init_db():
             amount REAL,
             utr TEXT,
             status TEXT DEFAULT 'pending',
-            created_at DATETIME,
-            expires_at DATETIME,
-            paid_at DATETIME,
+            created_at TIMESTAMP,
+            expires_at TIMESTAMP,
+            paid_at TIMESTAMP,
             merchant_order_id TEXT,
             customer_name TEXT,
             customer_email TEXT,
@@ -245,7 +246,7 @@ def init_db():
     c.execute("CREATE TABLE IF NOT EXISTS system_settings (key TEXT PRIMARY KEY, value TEXT)")
 
     c.execute("""CREATE TABLE IF NOT EXISTS payouts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         user_id TEXT,
         amount REAL,
         status TEXT DEFAULT 'pending',
@@ -254,29 +255,29 @@ def init_db():
         updated_at TEXT
     )""")
 
-    c.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('maintenance_mode', 'false')")
-    c.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('admin_password', 'admin123')")
-    c.execute("CREATE TABLE IF NOT EXISTS admin_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT, message TEXT, created_at TEXT)")
+    c.execute("INSERT INTO system_settings (key, value) VALUES ('maintenance_mode', 'false') ON CONFLICT (key) DO NOTHING")
+    c.execute("INSERT INTO system_settings (key, value) VALUES ('admin_password', 'admin123') ON CONFLICT (key) DO NOTHING")
+    c.execute("CREATE TABLE IF NOT EXISTS admin_logs (id SERIAL PRIMARY KEY, type TEXT, message TEXT, created_at TEXT)")
     
     c.execute('''
         CREATE TABLE IF NOT EXISTS webhook_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             user_id INTEGER,
             txn_id TEXT,
             url TEXT,
             payload TEXT,
             response_code INTEGER,
             response_body TEXT,
-            sent_at DATETIME
+            sent_at TIMESTAMP
         )
     ''')
     
     c.execute('''
         CREATE TABLE IF NOT EXISTS system_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             user_id INTEGER,
             log_msg TEXT,
-            log_time DATETIME
+            log_time TIMESTAMP
         )
     ''')
 
@@ -288,8 +289,8 @@ def init_db():
             ip_address TEXT,
             user_agent TEXT,
             device_summary TEXT,
-            created_at DATETIME,
-            last_active_at DATETIME,
+            created_at TIMESTAMP,
+            last_active_at TIMESTAMP,
             is_active INTEGER DEFAULT 1
         )
     ''')
@@ -297,7 +298,7 @@ def init_db():
     c.execute('''
         CREATE TABLE IF NOT EXISTS webhook_nonces (
             nonce TEXT PRIMARY KEY,
-            created_at DATETIME
+            created_at TIMESTAMP
         )
     ''')
     
@@ -306,13 +307,13 @@ def init_db():
             user_id INTEGER PRIMARY KEY,
             new_mobile TEXT,
             otp_code TEXT,
-            expires_at DATETIME
+            expires_at TIMESTAMP
         )
     ''')
     conn.commit()
 
     # 2. Dynamic column migrations for pre-existing databases
-    c.execute("PRAGMA table_info(users)")
+    c.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'users'")
     existing_user_cols = {row[1] for row in c.fetchall()}
     user_migrations = [
         ('display_name', "TEXT DEFAULT 'Merchant'"),
@@ -358,11 +359,11 @@ def init_db():
             except Exception:
                 pass
 
-    c.execute("PRAGMA table_info(transactions)")
-    existing_txn_cols = {row[1] for row in c.fetchall()}
+    c.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'transactions'")
+    existing_txn_cols = {row[0] for row in c.fetchall()}
     txn_migrations = [
         ('callback_url', "TEXT"),
-        ('expires_at', "DATETIME"),
+        ('expires_at', "TIMESTAMP"),
         ('customer_email', "TEXT"),
         ('merchant_order_id', "TEXT"),
         ('customer_name', "TEXT")
@@ -382,10 +383,10 @@ def init_db():
 init_db()
 
 def get_user(user_id):
-    conn = sqlite3.connect(DB_FILE)
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
-    c.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    
+    c = conn.cursor(cursor_factory=DictCursor)
+    c.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
     row = c.fetchone()
     conn.close()
     if row:
@@ -434,12 +435,12 @@ def get_user(user_id):
     return None
 
 def save_user_account(user_id, upi_id, gmail, app_pass, provider='fampay'):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("SELECT api_key FROM users WHERE user_id = ?", (user_id,))
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
+    c.execute("SELECT api_key FROM users WHERE user_id = %s", (user_id,))
     row = c.fetchone()
     api_key = row[0] if row and row[0] else "FAM_" + uuid.uuid4().hex + uuid.uuid4().hex[:12]
-    c.execute('''UPDATE users SET upi_id=?, gmail=?, app_pass=?, api_key=?, provider=? WHERE user_id=?''', 
+    c.execute('''UPDATE users SET upi_id=%s, gmail=%s, app_pass=%s, api_key=%s, provider=%s WHERE user_id=%s''', 
               (upi_id, gmail, encrypt_pass(app_pass), api_key, provider, user_id))
     conn.commit()
     conn.close()
@@ -461,9 +462,9 @@ def admin_required(f):
 
 def get_sys_setting(key, default=None):
     try:
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("SELECT value FROM system_settings WHERE key=?", (key,))
+        conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+        c = conn.cursor(cursor_factory=DictCursor)
+        c.execute("SELECT value FROM system_settings WHERE key=%s", (key,))
         row = c.fetchone()
         conn.close()
         return row[0] if row else default
@@ -471,16 +472,16 @@ def get_sys_setting(key, default=None):
         return default
 
 def set_sys_setting(key, value):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("UPDATE system_settings SET value=? WHERE key=?", (value, key))
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
+    c.execute("UPDATE system_settings SET value=%s WHERE key=%s", (value, key))
     conn.commit()
     conn.close()
 
 def add_admin_log(type_str, msg):
     try:
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
+        conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+        c = conn.cursor(cursor_factory=DictCursor)
         c.execute("INSERT INTO admin_logs (type, message, created_at) VALUES (?, ?, ?)", (type_str, msg, datetime.now().isoformat()))
         conn.commit()
         conn.close()
@@ -508,9 +509,9 @@ def check_maintenance():
 def check_plan_expiry():
     if 'user_id' in session and not request.path.startswith('/admin') and not request.path.startswith('/static'):
         try:
-            conn = sqlite3.connect(DB_FILE)
-            c = conn.cursor()
-            c.execute("SELECT plan_name, plan_expiry, free_plan_reset_date, created_at FROM users WHERE user_id=?", (session['user_id'],))
+            conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+            c = conn.cursor(cursor_factory=DictCursor)
+            c.execute("SELECT plan_name, plan_expiry, free_plan_reset_date, created_at FROM users WHERE user_id=%s", (session['user_id'],))
             row = c.fetchone()
             if row:
                 plan_name, plan_expiry_str, reset_date_str, created_at = row
@@ -520,7 +521,7 @@ def check_plan_expiry():
                     try:
                         expiry_date = datetime.fromisoformat(plan_expiry_str)
                         if datetime.now() > expiry_date + timedelta(days=3):
-                            c.execute("UPDATE users SET plan_name='Free', plan_expiry=NULL WHERE user_id=?", (session['user_id'],))
+                            c.execute("UPDATE users SET plan_name='Free', plan_expiry=NULL WHERE user_id=%s", (session['user_id'],))
                             conn.commit()
                             plan_name = 'Free'
                     except: pass
@@ -531,12 +532,12 @@ def check_plan_expiry():
                         base_date = datetime.fromisoformat(reset_date_str) if reset_date_str else (datetime.fromisoformat(created_at) if created_at else datetime.now())
                         if datetime.now() > base_date + timedelta(days=7):
                             new_reset_date = datetime.now().isoformat()
-                            c.execute("UPDATE users SET links_used=0, free_plan_reset_date=? WHERE user_id=?", (new_reset_date, session['user_id']))
+                            c.execute("UPDATE users SET links_used=0, free_plan_reset_date=%s WHERE user_id=%s", (new_reset_date, session['user_id']))
                             conn.commit()
                     except:
                         # Fallback if dates are unparseable
                         new_reset_date = datetime.now().isoformat()
-                        c.execute("UPDATE users SET links_used=0, free_plan_reset_date=? WHERE user_id=?", (new_reset_date, session['user_id']))
+                        c.execute("UPDATE users SET links_used=0, free_plan_reset_date=%s WHERE user_id=%s", (new_reset_date, session['user_id']))
                         conn.commit()
             conn.close()
         except Exception as e:
@@ -604,8 +605,8 @@ def admin_settings_view():
 @app.route('/admin/logs')
 @admin_required
 def admin_logs():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
     c.execute("SELECT type, message, created_at FROM admin_logs ORDER BY id DESC LIMIT 100")
     logs = c.fetchall()
     conn.close()
@@ -614,8 +615,8 @@ def admin_logs():
 @app.route('/admin/users')
 @admin_required
 def admin_users():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
     c.execute("SELECT user_id, username, display_name, plan_name, plan_expiry, role FROM users")
     all_users = c.fetchall()
     conn.close()
@@ -629,15 +630,15 @@ def login_required(f):
             
         session_token = session.get('session_token')
         if session_token:
-            conn = sqlite3.connect(DB_FILE)
-            c = conn.cursor()
-            c.execute("SELECT is_active FROM user_sessions WHERE session_token=? AND user_id=?", (session_token, session['user_id']))
+            conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+            c = conn.cursor(cursor_factory=DictCursor)
+            c.execute("SELECT is_active FROM user_sessions WHERE session_token=%s AND user_id=%s", (session_token, session['user_id']))
             row = c.fetchone()
             if not row or row[0] != 1:
                 conn.close()
                 session.clear()
                 return redirect(url_for('login', error='Your session has expired or was revoked. Please sign in again.'))
-            c.execute("UPDATE user_sessions SET last_active_at=? WHERE session_token=?", (datetime.now().isoformat(), session_token))
+            c.execute("UPDATE user_sessions SET last_active_at=%s WHERE session_token=%s", (datetime.now().isoformat(), session_token))
             conn.commit()
             conn.close()
         return f(*args, **kwargs)
@@ -653,8 +654,8 @@ def establish_user_session(user_id):
     summary = get_device_summary(ua)
     now_str = datetime.now().isoformat()
     
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
     c.execute("""INSERT INTO user_sessions (session_id, user_id, session_token, ip_address, user_agent, device_summary, created_at, last_active_at, is_active)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)""", (session_id, user_id, session_token, ip, ua, summary, now_str, now_str))
     conn.commit()
@@ -756,11 +757,11 @@ def google_callback():
     if not google_email:
         return render_template('login.html', error="Unable to obtain verified email address from your Google account.")
         
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
     
     # 3. Check for existing user by google_id or verified email
-    c.execute("SELECT user_id, password_hash, google_id FROM users WHERE (google_id IS NOT NULL AND google_id = ?) OR LOWER(email) = ? OR LOWER(username) = ?", 
+    c.execute("SELECT user_id, password_hash, google_id FROM users WHERE (google_id IS NOT NULL AND google_id = %s) OR LOWER(email) = ? OR LOWER(username) = ?", 
               (google_id, google_email, google_email))
     row = c.fetchone()
     
@@ -768,9 +769,9 @@ def google_callback():
         user_id = row[0]
         # Link google_id if not already set, update avatar if empty
         if not row[2]:
-            c.execute("UPDATE users SET google_id = ?, auth_provider = 'google' WHERE user_id = ?", (google_id, user_id))
+            c.execute("UPDATE users SET google_id = %s, auth_provider = 'google' WHERE user_id = %s", (google_id, user_id))
         if profile_pic:
-            c.execute("UPDATE users SET profile_pic = ? WHERE user_id = ? AND (profile_pic IS NULL OR profile_pic = '')", (profile_pic, user_id))
+            c.execute("UPDATE users SET profile_pic = %s WHERE user_id = %s AND (profile_pic IS NULL OR profile_pic = '')", (profile_pic, user_id))
         conn.commit()
         conn.close()
         add_sys_log(user_id, "Logged in via Google Account.")
@@ -779,9 +780,9 @@ def google_callback():
         now_str = datetime.now().isoformat()
         username = google_email
         c.execute("""INSERT INTO users (username, email, google_id, display_name, profile_pic, auth_provider, created_at, role, plan_name)
-                     VALUES (?, ?, ?, ?, ?, 'google', ?, 'merchant', 'Free')""",
+                     VALUES (%s, %s, %s, %s, %s, 'google', %s, 'merchant', 'Free') RETURNING user_id""",
                   (username, google_email, google_id, display_name, profile_pic, now_str))
-        user_id = c.lastrowid
+        user_id = c.fetchone()[0]
         conn.commit()
         conn.close()
         add_sys_log(user_id, f"Registered new merchant account via Google ({google_email}).")
@@ -804,9 +805,9 @@ def login_2fa():
     error = None
     if request.method == 'POST':
         code = request.form.get('code', '').strip()
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("SELECT totp_secret_enc FROM users WHERE user_id=?", (user_id,))
+        conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+        c = conn.cursor(cursor_factory=DictCursor)
+        c.execute("SELECT totp_secret_enc FROM users WHERE user_id=%s", (user_id,))
         row = c.fetchone()
         conn.close()
         
@@ -834,8 +835,8 @@ def register():
 @app.route('/admin')
 @admin_required
 def admin_panel():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
     
     c.execute("SELECT user_id, username, display_name, plan_name, plan_expiry, role FROM users LIMIT 10")
     all_users = c.fetchall()
@@ -870,8 +871,8 @@ def admin_panel():
 @app.route('/admin/transactions')
 @admin_required
 def admin_transactions():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
     c.execute("""
         SELECT t.txn_id, t.amount, t.status, t.created_at, u.display_name, u.username, t.customer_name
         FROM transactions t
@@ -892,9 +893,9 @@ def admin_update_plan():
         expiry_date = (datetime.now() + timedelta(days=expiry_days)).isoformat()
     else:
         expiry_date = None
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("UPDATE users SET plan_name=?, plan_expiry=?, links_used=0 WHERE user_id=?", (new_plan, expiry_date, target_user))
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
+    c.execute("UPDATE users SET plan_name=%s, plan_expiry=%s, links_used=0 WHERE user_id=%s", (new_plan, expiry_date, target_user))
     conn.commit()
     conn.close()
     return redirect('/admin/users?success=Plan updated successfully')
@@ -908,9 +909,9 @@ def admin_make_admin():
     
     target_user = request.form.get('target_user')
     
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("UPDATE users SET role='admin' WHERE user_id=?", (target_user,))
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
+    c.execute("UPDATE users SET role='admin' WHERE user_id=%s", (target_user,))
     conn.commit()
     conn.close()
     return redirect(url_for('admin_panel', success='User promoted to admin'))
@@ -922,9 +923,9 @@ def logout():
     session_token = session.get('session_token')
     if session_token:
         try:
-            conn = sqlite3.connect(DB_FILE)
-            c = conn.cursor()
-            c.execute("UPDATE user_sessions SET is_active=0 WHERE session_token=?", (session_token,))
+            conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+            c = conn.cursor(cursor_factory=DictCursor)
+            c.execute("UPDATE user_sessions SET is_active=0 WHERE session_token=%s", (session_token,))
             conn.commit()
             conn.close()
         except Exception:
@@ -951,16 +952,16 @@ def index():
 @login_required
 def mark_paid(txn_id):
     user_id = session['user_id']
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
     
-    c.execute("SELECT amount FROM transactions WHERE txn_id=? AND user_id=? AND status='pending'", (txn_id, user_id))
+    c.execute("SELECT amount FROM transactions WHERE txn_id=%s AND user_id=%s AND status='pending'", (txn_id, user_id))
     txn = c.fetchone()
     
     if txn:
         amount = txn[0]
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        c.execute("UPDATE transactions SET status='completed', utr='MANUAL_VERIFY', paid_at=? WHERE txn_id=?", (now_str, txn_id))
+        c.execute("UPDATE transactions SET status='completed', utr='MANUAL_VERIFY', paid_at=%s WHERE txn_id=%s", (now_str, txn_id))
         conn.commit()
         conn.close()
         
@@ -981,13 +982,13 @@ def dashboard():
     user_info = get_user(user_id)
     
     # Get stats
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
     c.execute("SELECT COUNT(*), SUM(amount) FROM transactions WHERE user_id=? AND status='completed'", (user_id,))
     total_count, total_amount = c.fetchone()
     
     # Recent transactions (all statuses)
-    c.execute("SELECT txn_id, amount, utr, paid_at, status FROM transactions WHERE user_id=? ORDER BY created_at DESC LIMIT 15", (user_id,))
+    c.execute("SELECT txn_id, amount, utr, paid_at, status FROM transactions WHERE user_id=%s ORDER BY created_at DESC LIMIT 15", (user_id,))
     txns = c.fetchall()
     
     # Chart Data: Revenue for last 7 days
@@ -1022,20 +1023,20 @@ def update_credentials():
     new_username = request.form.get('username')
     new_password = request.form.get('password')
     
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
     
     try:
         if new_password:
             from werkzeug.security import generate_password_hash
             new_hash = generate_password_hash(new_password)
-            c.execute("UPDATE users SET username=?, password_hash=? WHERE user_id=?", (new_username, new_hash, user_id))
+            c.execute("UPDATE users SET username=%s, password_hash=%s WHERE user_id=%s", (new_username, new_hash, user_id))
         else:
-            c.execute("UPDATE users SET username=? WHERE user_id=?", (new_username, user_id))
+            c.execute("UPDATE users SET username=%s WHERE user_id=%s", (new_username, user_id))
             
         conn.commit()
         success = 'Credentials updated successfully!'
-    except sqlite3.IntegrityError:
+    except psycopg2.IntegrityError:
         success = 'Error: Username already exists!'
     finally:
         conn.close()
@@ -1131,11 +1132,11 @@ def settings():
     if active_tab not in ('profile', 'security'):
         active_tab = 'profile'
     
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
     c.execute("""SELECT session_id, ip_address, device_summary, created_at, last_active_at, session_token 
                  FROM user_sessions 
-                 WHERE user_id=? AND is_active=1 
+                 WHERE user_id=%s AND is_active=1 
                  ORDER BY last_active_at DESC""", (user_id,))
     active_sessions = c.fetchall()
     conn.close()
@@ -1165,15 +1166,15 @@ def settings_profile():
         if not re.match(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$', email_val):
             return redirect(url_for('settings', tab='profile', error='Invalid email format.'))
             
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("SELECT user_id FROM users WHERE username=? AND user_id != ?", (username, user_id))
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
+    c.execute("SELECT user_id FROM users WHERE username=%s AND user_id != %s", (username, user_id))
     if c.fetchone():
         conn.close()
         return redirect(url_for('settings', tab='profile', error='Username is already taken by another account.'))
         
     if email_val:
-        c.execute("SELECT user_id FROM users WHERE email=? AND user_id != ?", (email_val, user_id))
+        c.execute("SELECT user_id FROM users WHERE email=%s AND user_id != %s", (email_val, user_id))
         if c.fetchone():
             conn.close()
             return redirect(url_for('settings', tab='profile', error='Email address is already in use.'))
@@ -1193,10 +1194,10 @@ def settings_profile():
         profile_pic_b64 = f"data:{c_type};base64," + base64.b64encode(file_data).decode('utf-8')
         
     if profile_pic_b64:
-        c.execute("UPDATE users SET display_name=?, username=?, email=?, profile_pic=? WHERE user_id=?", 
+        c.execute("UPDATE users SET display_name=%s, username=%s, email=%s, profile_pic=%s WHERE user_id=%s", 
                   (display_name, username, email_val, profile_pic_b64, user_id))
     else:
-        c.execute("UPDATE users SET display_name=?, username=?, email=? WHERE user_id=?", 
+        c.execute("UPDATE users SET display_name=%s, username=%s, email=%s WHERE user_id=%s", 
                   (display_name, username, email_val, user_id))
     conn.commit()
     conn.close()
@@ -1217,9 +1218,9 @@ def settings_request_mobile_otp():
     otp = f"{secrets.randbelow(900000) + 100000}"
     expires = (datetime.now() + timedelta(minutes=5)).isoformat()
     
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("INSERT OR REPLACE INTO mobile_verification_otps (user_id, new_mobile, otp_code, expires_at) VALUES (?, ?, ?, ?)",
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
+    c.execute("INSERT INTO mobile_verification_otps (user_id, new_mobile, otp_code, expires_at) VALUES (%s, %s, %s, %s) ON CONFLICT (user_id) DO UPDATE SET new_mobile=EXCLUDED.new_mobile, otp_code=EXCLUDED.otp_code, expires_at=EXCLUDED.expires_at",
               (user_id, new_mobile, otp, expires))
     conn.commit()
     conn.close()
@@ -1240,9 +1241,9 @@ def settings_verify_mobile_otp():
     user_id = session['user_id']
     entered_otp = request.form.get('otp', '').strip()
     
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("SELECT new_mobile, otp_code, expires_at FROM mobile_verification_otps WHERE user_id=?", (user_id,))
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
+    c.execute("SELECT new_mobile, otp_code, expires_at FROM mobile_verification_otps WHERE user_id=%s", (user_id,))
     row = c.fetchone()
     
     if not row:
@@ -1251,7 +1252,7 @@ def settings_verify_mobile_otp():
         
     new_mobile, otp_code, expires_at = row
     if datetime.now() > datetime.fromisoformat(expires_at):
-        c.execute("DELETE FROM mobile_verification_otps WHERE user_id=?", (user_id,))
+        c.execute("DELETE FROM mobile_verification_otps WHERE user_id=%s", (user_id,))
         conn.commit()
         conn.close()
         return jsonify({'status': 'error', 'message': 'OTP expired. Please request a new verification code.'}), 400
@@ -1260,8 +1261,8 @@ def settings_verify_mobile_otp():
         conn.close()
         return jsonify({'status': 'error', 'message': 'Invalid verification code. Please check and retry.'}), 400
         
-    c.execute("UPDATE users SET mobile=? WHERE user_id=?", (new_mobile, user_id))
-    c.execute("DELETE FROM mobile_verification_otps WHERE user_id=?", (user_id,))
+    c.execute("UPDATE users SET mobile=%s WHERE user_id=%s", (new_mobile, user_id))
+    c.execute("DELETE FROM mobile_verification_otps WHERE user_id=%s", (user_id,))
     conn.commit()
     conn.close()
     
@@ -1293,16 +1294,16 @@ def settings_change_password():
         return redirect(url_for('settings', tab='security', error='New password and confirmation do not match.'))
         
     new_hash = generate_password_hash(new_pass)
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("UPDATE users SET password_hash=? WHERE user_id=?", (new_hash, user_id))
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
+    c.execute("UPDATE users SET password_hash=%s WHERE user_id=%s", (new_hash, user_id))
     
     if logout_other:
         current_token = session.get('session_token')
         if current_token:
-            c.execute("UPDATE user_sessions SET is_active=0 WHERE user_id=? AND session_token != ?", (user_id, current_token))
+            c.execute("UPDATE user_sessions SET is_active=0 WHERE user_id=%s AND session_token != %s", (user_id, current_token))
         else:
-            c.execute("UPDATE user_sessions SET is_active=0 WHERE user_id=?", (user_id,))
+            c.execute("UPDATE user_sessions SET is_active=0 WHERE user_id=%s", (user_id,))
             
     conn.commit()
     conn.close()
@@ -1351,14 +1352,14 @@ def settings_business():
             return redirect(url_for('settings', tab='business', error='Only JPG or PNG images are allowed.'))
         logo_b64 = f"data:{c_type};base64," + base64.b64encode(file_data).decode('utf-8')
         
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
     if logo_b64:
-        c.execute("""UPDATE users SET business_name=?, business_website=?, business_support_email=?, business_logo=? 
-                     WHERE user_id=?""", (business_name, business_website, business_support_email, logo_b64, user_id))
+        c.execute("""UPDATE users SET business_name=%s, business_website=%s, business_support_email=%s, business_logo=%s 
+                     WHERE user_id=%s""", (business_name, business_website, business_support_email, logo_b64, user_id))
     else:
-        c.execute("""UPDATE users SET business_name=?, business_website=?, business_support_email=? 
-                     WHERE user_id=?""", (business_name, business_website, business_support_email, user_id))
+        c.execute("""UPDATE users SET business_name=%s, business_website=%s, business_support_email=%s 
+                     WHERE user_id=%s""", (business_name, business_website, business_support_email, user_id))
     conn.commit()
     conn.close()
     
@@ -1395,10 +1396,10 @@ def settings_payment_rules():
         if not is_safe_redirect_url(failed_url, domain_list, user_info.get('business_website')):
             return redirect(url_for('settings', tab='payment', error='Failed Redirect URL is not in your verified domains whitelist.'))
             
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("""UPDATE users SET payment_expiry_minutes=?, success_redirect_url=?, failed_redirect_url=?, allowed_redirect_domains=? 
-                 WHERE user_id=?""", (expiry_mins, success_url, failed_url, allowed_domains, user_id))
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
+    c.execute("""UPDATE users SET payment_expiry_minutes=%s, success_redirect_url=%s, failed_redirect_url=%s, allowed_redirect_domains=%s 
+                 WHERE user_id=%s""", (expiry_mins, success_url, failed_url, allowed_domains, user_id))
     conn.commit()
     conn.close()
     
@@ -1418,13 +1419,13 @@ def settings_regenerate_keys():
     key_hash = hashlib.sha256(raw_key.encode('utf-8')).hexdigest()
     key_hint = "..." + raw_key[-4:]
     
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
     if key_type == 'live':
-        c.execute("UPDATE users SET live_api_key_hash=?, live_api_key_hint=?, api_key=? WHERE user_id=?", 
+        c.execute("UPDATE users SET live_api_key_hash=%s, live_api_key_hint=%s, api_key=%s WHERE user_id=%s", 
                   (key_hash, key_hint, raw_key, user_id))
     else:
-        c.execute("UPDATE users SET test_api_key_hash=?, test_api_key_hint=? WHERE user_id=?", 
+        c.execute("UPDATE users SET test_api_key_hash=%s, test_api_key_hint=%s WHERE user_id=%s", 
                   (key_hash, key_hint, user_id))
     conn.commit()
     conn.close()
@@ -1450,9 +1451,9 @@ def settings_notifications():
     token_enc = encrypt_pass(bot_token) if bot_token else None
     chat_enc = encrypt_pass(chat_id) if chat_id else None
     
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("UPDATE users SET telegram_bot_token_enc=?, telegram_chat_id_enc=? WHERE user_id=?", 
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
+    c.execute("UPDATE users SET telegram_bot_token_enc=%s, telegram_chat_id_enc=%s WHERE user_id=%s", 
               (token_enc, chat_enc, user_id))
     conn.commit()
     conn.close()
@@ -1466,9 +1467,9 @@ def settings_test_notifications():
         return jsonify({'status': 'error', 'message': 'CSRF verification failed'}), 403
         
     user_id = session['user_id']
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("SELECT telegram_bot_token_enc, telegram_chat_id_enc, display_name FROM users WHERE user_id=?", (user_id,))
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
+    c.execute("SELECT telegram_bot_token_enc, telegram_chat_id_enc, display_name FROM users WHERE user_id=%s", (user_id,))
     row = c.fetchone()
     conn.close()
     
@@ -1501,9 +1502,9 @@ def settings_revoke_session(session_id):
         return redirect(url_for('settings', tab='security', error='Security check failed (invalid CSRF).'))
         
     user_id = session['user_id']
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("UPDATE user_sessions SET is_active=0 WHERE session_id=? AND user_id=?", (session_id, user_id))
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
+    c.execute("UPDATE user_sessions SET is_active=0 WHERE session_id=%s AND user_id=%s", (session_id, user_id))
     conn.commit()
     conn.close()
     return redirect(url_for('settings', tab='security', success='Session revoked successfully.'))
@@ -1515,9 +1516,9 @@ def settings_logout_all_sessions():
         return redirect(url_for('settings', tab='security', error='Security check failed (invalid CSRF).'))
         
     user_id = session['user_id']
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("UPDATE user_sessions SET is_active=0 WHERE user_id=?", (user_id,))
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
+    c.execute("UPDATE user_sessions SET is_active=0 WHERE user_id=%s", (user_id,))
     conn.commit()
     conn.close()
     session.clear()
@@ -1562,9 +1563,9 @@ def settings_verify_2fa():
         return redirect(url_for('settings', tab='security', error='2FA setup expired. Please click Enable 2FA again.'))
         
     if verify_totp_token(secret, code):
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("UPDATE users SET totp_secret_enc=?, totp_enabled=1 WHERE user_id=?", 
+        conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+        c = conn.cursor(cursor_factory=DictCursor)
+        c.execute("UPDATE users SET totp_secret_enc=%s, totp_enabled=1 WHERE user_id=%s", 
                   (encrypt_pass(secret), user_id))
         conn.commit()
         conn.close()
@@ -1587,9 +1588,9 @@ def settings_disable_2fa():
     if not check_password_hash(user_info['password_hash'], pwd):
         return redirect(url_for('settings', tab='security', error='Incorrect password.'))
         
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("SELECT totp_secret_enc FROM users WHERE user_id=?", (user_id,))
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
+    c.execute("SELECT totp_secret_enc FROM users WHERE user_id=%s", (user_id,))
     row = c.fetchone()
     if row and row[0]:
         secret = decrypt_pass(row[0])
@@ -1597,7 +1598,7 @@ def settings_disable_2fa():
             conn.close()
             return redirect(url_for('settings', tab='security', error='Invalid 2FA code.'))
             
-    c.execute("UPDATE users SET totp_secret_enc=NULL, totp_enabled=0 WHERE user_id=?", (user_id,))
+    c.execute("UPDATE users SET totp_secret_enc=NULL, totp_enabled=0 WHERE user_id=%s", (user_id,))
     conn.commit()
     conn.close()
     return redirect(url_for('settings', tab='security', success='Two-Factor Authentication has been disabled.'))
@@ -1624,9 +1625,9 @@ def appearance():
             
         layout_density = request.form.get('layout_density', 'comfortable')
             
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("UPDATE users SET theme=?, accent_color=?, layout_density=? WHERE user_id=?", 
+        conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+        c = conn.cursor(cursor_factory=DictCursor)
+        c.execute("UPDATE users SET theme=%s, accent_color=%s, layout_density=%s WHERE user_id=%s", 
                   (theme, accent_color, layout_density, user_id))
         conn.commit()
         conn.close()
@@ -1649,10 +1650,10 @@ def save_customize():
 @login_required
 def delete_account():
     user_id = session['user_id']
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
     # Just clear the payment details
-    c.execute("UPDATE users SET upi_id=NULL, gmail=NULL, app_pass=NULL, api_key=NULL WHERE user_id=?", (user_id,))
+    c.execute("UPDATE users SET upi_id=NULL, gmail=NULL, app_pass=NULL, api_key=NULL WHERE user_id=%s", (user_id,))
     conn.commit()
     conn.close()
     return redirect(url_for('connect_accounts', success='Account Connection Deleted!'))
@@ -1663,9 +1664,9 @@ def payment_links():
     user_id = session['user_id']
     user_info = get_user(user_id)
     
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("SELECT txn_id, amount, status, created_at FROM transactions WHERE user_id=? ORDER BY created_at DESC", (user_id,))
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
+    c.execute("SELECT txn_id, amount, status, created_at FROM transactions WHERE user_id=%s ORDER BY created_at DESC", (user_id,))
     links = c.fetchall()
     conn.close()
     error = request.args.get('error')
@@ -1678,8 +1679,8 @@ def transactions():
     user_id = session['user_id']
     user_info = get_user(user_id)
     
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
     
     # Stats
     c.execute("SELECT SUM(amount), COUNT(*) FROM transactions WHERE user_id=? AND status='completed'", (user_id,))
@@ -1699,7 +1700,7 @@ def transactions():
     expired_count = c.fetchone()[0] or 0
     
     # Fetch all transactions
-    c.execute("SELECT txn_id, amount, status, created_at, utr FROM transactions WHERE user_id=? ORDER BY created_at DESC", (user_id,))
+    c.execute("SELECT txn_id, amount, status, created_at, utr FROM transactions WHERE user_id=%s ORDER BY created_at DESC", (user_id,))
     txns = c.fetchall()
     conn.close()
     
@@ -1738,14 +1739,14 @@ def generate_link():
     now = datetime.now()
     expires = now + timedelta(minutes=expiry_mins)
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
     
     # ATOMIC LIMIT CHECK
     c.execute('''
         UPDATE users 
         SET links_used = links_used + 1 
-        WHERE user_id = ? AND (
+        WHERE user_id = %s AND (
             is_admin_bypass = 1 OR 
             links_used < (
                 CASE plan_name 
@@ -1766,7 +1767,7 @@ def generate_link():
                  VALUES (?, ?, ?, 'pending', ?, ?, ?)''', 
               (txn_id, user_id, amount, now.isoformat(), expires.isoformat(), customer_email))
     
-    c.execute("SELECT links_used, plan_name FROM users WHERE user_id = ?", (user_id,))
+    c.execute("SELECT links_used, plan_name FROM users WHERE user_id = %s", (user_id,))
     usage_row = c.fetchone()
     if usage_row:
         l_used, p_name = usage_row
@@ -1790,9 +1791,9 @@ def export_transactions():
         return redirect(url_for('login'))
         
     user_id = session['user_id']
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("SELECT txn_id, amount, utr, status, created_at, paid_at FROM transactions WHERE user_id=? ORDER BY created_at DESC", (user_id,))
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
+    c.execute("SELECT txn_id, amount, utr, status, created_at, paid_at FROM transactions WHERE user_id=%s ORDER BY created_at DESC", (user_id,))
     rows = c.fetchall()
     conn.close()
     
@@ -1816,10 +1817,10 @@ def api_create_order():
     if not api_key:
         return jsonify({"status": "error", "message": "Missing API Key header (X-Fam-Key)"}), 401
         
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
     key_hash = hashlib.sha256(api_key.strip().encode('utf-8')).hexdigest()
-    c.execute("SELECT user_id, payment_expiry_minutes FROM users WHERE live_api_key_hash=? OR test_api_key_hash=? OR api_key=?", (key_hash, key_hash, api_key))
+    c.execute("SELECT user_id, payment_expiry_minutes FROM users WHERE live_api_key_hash=%s OR test_api_key_hash=%s OR api_key=%s", (key_hash, key_hash, api_key))
     user = c.fetchone()
     if not user:
         conn.close()
@@ -1855,7 +1856,7 @@ def api_create_order():
     c.execute('''
         UPDATE users 
         SET links_used = links_used + 1 
-        WHERE user_id = ? AND (
+        WHERE user_id = %s AND (
             is_admin_bypass = 1 OR 
             links_used < (
                 CASE plan_name 
@@ -1876,7 +1877,7 @@ def api_create_order():
                  VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?)''', 
               (txn_id, user_id, amount, now.isoformat(), expires.isoformat(), merchant_order_id, customer_name, callback_url))
               
-    c.execute("SELECT links_used, plan_name FROM users WHERE user_id = ?", (user_id,))
+    c.execute("SELECT links_used, plan_name FROM users WHERE user_id = %s", (user_id,))
     usage_row = c.fetchone()
     if usage_row:
         l_used, p_name = usage_row
@@ -1898,9 +1899,9 @@ def api_create_order():
 
 @app.route('/pay/<txn_id>', methods=['GET'])
 def checkout_page_by_id(txn_id):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("SELECT user_id, amount, status, callback_url, expires_at FROM transactions WHERE txn_id = ?", (txn_id,))
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
+    c.execute("SELECT user_id, amount, status, callback_url, expires_at FROM transactions WHERE txn_id = %s", (txn_id,))
     txn = c.fetchone()
     
     if not txn:
@@ -1986,10 +1987,10 @@ def checkout_page_legacy():
     if not api_key or not amount_raw:
         return "<h1>Error: Missing api_key or amount</h1>", 400
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
     key_hash = hashlib.sha256(api_key.strip().encode('utf-8')).hexdigest()
-    c.execute("SELECT user_id, upi_id, display_name, theme, provider, payment_expiry_minutes FROM users WHERE live_api_key_hash = ? OR test_api_key_hash = ? OR api_key = ?", (key_hash, key_hash, api_key))
+    c.execute("SELECT user_id, upi_id, display_name, theme, provider, payment_expiry_minutes FROM users WHERE live_api_key_hash = %s OR test_api_key_hash = %s OR api_key = %s", (key_hash, key_hash, api_key))
     user = c.fetchone()
     
     if not user or not user[1]:
@@ -2044,9 +2045,9 @@ def cancel_txn():
     if not txn_id:
         return jsonify({'status': 'error'}), 400
         
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("UPDATE transactions SET status='failed' WHERE txn_id=? AND status='pending'", (txn_id,))
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
+    c.execute("UPDATE transactions SET status='failed' WHERE txn_id=%s AND status='pending'", (txn_id,))
     conn.commit()
     conn.close()
     return jsonify({'status': 'success'})
@@ -2058,10 +2059,10 @@ def submit_utr():
     if not txn_id or not utr:
         return jsonify({'status': 'error', 'message': 'Missing data'}), 400
         
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
     # Only update if pending
-    c.execute("UPDATE transactions SET utr=? WHERE txn_id=? AND status='pending'", (utr, txn_id))
+    c.execute("UPDATE transactions SET utr=%s WHERE txn_id=%s AND status='pending'", (utr, txn_id))
     conn.commit()
     conn.close()
     return jsonify({'status': 'success'})
@@ -2071,20 +2072,20 @@ def verify_api():
     api_key = request.args.get('api_key')
     txn_id = request.args.get('txn_id')
 
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
     
     if api_key:
         key_hash = hashlib.sha256(api_key.strip().encode('utf-8')).hexdigest()
-        c.execute("SELECT user_id FROM users WHERE live_api_key_hash=? OR test_api_key_hash=? OR api_key=?", (key_hash, key_hash, api_key))
+        c.execute("SELECT user_id FROM users WHERE live_api_key_hash=%s OR test_api_key_hash=%s OR api_key=%s", (key_hash, key_hash, api_key))
         user = c.fetchone()
         if not user:
             conn.close()
             return jsonify({"status": "error", "message": "Invalid API Key"}), 401
-        c.execute("SELECT status, amount, utr, paid_at FROM transactions WHERE txn_id = ? AND user_id = ?", (txn_id, user[0]))
+        c.execute("SELECT status, amount, utr, paid_at FROM transactions WHERE txn_id = %s AND user_id = %s", (txn_id, user[0]))
     else:
         # Allow checking by txn_id alone for the checkout page polling
-        c.execute("SELECT status, amount, utr, paid_at FROM transactions WHERE txn_id = ?", (txn_id,))
+        c.execute("SELECT status, amount, utr, paid_at FROM transactions WHERE txn_id = %s", (txn_id,))
         
     row = c.fetchone()
     conn.close()
@@ -2109,12 +2110,12 @@ def verify_api():
 
 def add_sys_log(user_id, msg):
     try:
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
+        conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+        c = conn.cursor(cursor_factory=DictCursor)
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         c.execute("INSERT INTO system_logs (user_id, log_msg, log_time) VALUES (?, ?, ?)", (user_id, msg, now_str))
         # Keep only last 100 logs per user to avoid DB bloat
-        c.execute("DELETE FROM system_logs WHERE id NOT IN (SELECT id FROM system_logs WHERE user_id=? ORDER BY id DESC LIMIT 100)", (user_id,))
+        c.execute("DELETE FROM system_logs WHERE id NOT IN (SELECT id FROM system_logs WHERE user_id=%s ORDER BY id DESC LIMIT 100)", (user_id,))
         conn.commit()
         conn.close()
     except Exception as e:
@@ -2127,9 +2128,9 @@ from email.mime.text import MIMEText
 def send_email_receipt(user_id, customer_email, txn_id, amount, utr, date_str):
     try:
         if not customer_email or '@' not in customer_email: return
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("SELECT gmail, app_pass, display_name FROM users WHERE user_id=?", (user_id,))
+        conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+        c = conn.cursor(cursor_factory=DictCursor)
+        c.execute("SELECT gmail, app_pass, display_name FROM users WHERE user_id=%s", (user_id,))
         row = c.fetchone()
         conn.close()
         if not row: return
@@ -2191,9 +2192,9 @@ def send_email_receipt(user_id, customer_email, txn_id, amount, utr, date_str):
 
 def send_merchant_notification(user_id, txn_id, amount, utr, date_str):
     try:
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("SELECT email, gmail, display_name FROM users WHERE user_id=?", (user_id,))
+        conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+        c = conn.cursor(cursor_factory=DictCursor)
+        c.execute("SELECT email, gmail, display_name FROM users WHERE user_id=%s", (user_id,))
         row = c.fetchone()
         conn.close()
         
@@ -2259,9 +2260,9 @@ def send_merchant_notification(user_id, txn_id, amount, utr, date_str):
         
 def send_telegram_alert(user_id, txn_id, amount, utr):
     try:
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("SELECT telegram_bot_token_enc, telegram_chat_id_enc, display_name FROM users WHERE user_id=?", (user_id,))
+        conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+        c = conn.cursor(cursor_factory=DictCursor)
+        c.execute("SELECT telegram_bot_token_enc, telegram_chat_id_enc, display_name FROM users WHERE user_id=%s", (user_id,))
         row = c.fetchone()
         conn.close()
         if row and row[0] and row[1]:
@@ -2284,9 +2285,9 @@ def send_telegram_alert(user_id, txn_id, amount, utr):
 
 def send_telegram_quota_alert(user_id, l_used, limit, p_name):
     try:
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("SELECT telegram_bot_token_enc, telegram_chat_id_enc FROM users WHERE user_id=?", (user_id,))
+        conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+        c = conn.cursor(cursor_factory=DictCursor)
+        c.execute("SELECT telegram_bot_token_enc, telegram_chat_id_enc FROM users WHERE user_id=%s", (user_id,))
         row = c.fetchone()
         conn.close()
         if row and row[0] and row[1]:
@@ -2305,9 +2306,9 @@ def send_telegram_quota_alert(user_id, l_used, limit, p_name):
 
 def send_webhook(user_id, callback_url, txn_id, merchant_order_id, amount, utr):
     try:
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("SELECT api_key, live_api_key_hash FROM users WHERE user_id=?", (user_id,))
+        conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+        c = conn.cursor(cursor_factory=DictCursor)
+        c.execute("SELECT api_key, live_api_key_hash FROM users WHERE user_id=%s", (user_id,))
         row = c.fetchone()
         api_key = row[0] if row and row[0] else "default_secret"
         
@@ -2340,7 +2341,7 @@ def send_webhook(user_id, callback_url, txn_id, merchant_order_id, amount, utr):
         
         # Record nonce in database
         try:
-            c.execute("INSERT OR REPLACE INTO webhook_nonces (nonce, created_at) VALUES (?, ?)", (nonce, datetime.now().isoformat()))
+            c.execute("INSERT INTO webhook_nonces (nonce, created_at) VALUES (%s, %s) ON CONFLICT (nonce) DO NOTHING", (nonce, datetime.now().isoformat()))
             conn.commit()
         except Exception:
             pass
@@ -2369,8 +2370,8 @@ def monitor_gmails():
     processed_msg_ids = set()
     while True:
         try:
-            conn = sqlite3.connect(DB_FILE)
-            c = conn.cursor()
+            conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+            c = conn.cursor(cursor_factory=DictCursor)
             c.execute("SELECT user_id, gmail, app_pass FROM users WHERE gmail IS NOT NULL AND app_pass IS NOT NULL")
             users = c.fetchall()
             conn.close()
@@ -2458,12 +2459,12 @@ def monitor_gmails():
                                 utr = utr_match.group(1)
                                 add_sys_log(user_id, f"Parsed Payment: â‚¹{amount} with UTR: {utr}")
 
-                                conn_db = sqlite3.connect(DB_FILE)
-                                c_db = conn_db.cursor()
+                                conn_db = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+                                c_db = conn_db.cursor(cursor_factory=DictCursor)
                                 now_str = datetime.now().isoformat()
                                 
                                 # Check if user manually submitted this UTR
-                                c_db.execute("SELECT txn_id, status, callback_url, merchant_order_id, expires_at FROM transactions WHERE utr=?", (utr,))
+                                c_db.execute("SELECT txn_id, status, callback_url, merchant_order_id, expires_at FROM transactions WHERE utr=%s", (utr,))
                                 row = c_db.fetchone()
                                 txn_completed_now = False
                                 
@@ -2471,11 +2472,11 @@ def monitor_gmails():
                                     t_id, t_status, t_cb, t_m_id, t_exp = row
                                     # Hard Gate: Expire order if time crossed
                                     if t_exp and now_str > t_exp:
-                                        c_db.execute("UPDATE transactions SET status='expired' WHERE txn_id=?", (t_id,))
+                                        c_db.execute("UPDATE transactions SET status='expired' WHERE txn_id=%s", (t_id,))
                                         conn_db.commit()
                                         add_sys_log(user_id, f"HARD REJECT: Payment with UTR {utr} arrived after expiry window ({t_exp}). Marked as expired.")
                                     elif t_status == 'pending':
-                                        c_db.execute("UPDATE transactions SET status='completed', paid_at=? WHERE txn_id=?", (now_str, t_id))
+                                        c_db.execute("UPDATE transactions SET status='completed', paid_at=%s WHERE txn_id=%s", (now_str, t_id))
                                         conn_db.commit()
                                         txn_completed_now = True
                                         completed_txn = (t_id, 'completed', t_cb, t_m_id)
@@ -2483,18 +2484,18 @@ def monitor_gmails():
                                     # Amount-based fallback (if UTR not submitted by user yet)
                                     c_db.execute("""SELECT txn_id, callback_url, merchant_order_id, expires_at 
                                                     FROM transactions 
-                                                    WHERE user_id=? AND status='pending' AND ABS(amount - ?) < 0.01 
+                                                    WHERE user_id=%s AND status='pending' AND ABS(amount - %s) < 0.01 
                                                       AND (utr IS NULL OR utr='') 
                                                     ORDER BY created_at ASC LIMIT 1""", (user_id, amount))
                                     pending_txn = c_db.fetchone()
                                     if pending_txn:
                                         p_id, p_cb, p_m_id, p_exp = pending_txn
                                         if p_exp and now_str > p_exp:
-                                            c_db.execute("UPDATE transactions SET status='expired' WHERE txn_id=?", (p_id,))
+                                            c_db.execute("UPDATE transactions SET status='expired' WHERE txn_id=%s", (p_id,))
                                             conn_db.commit()
                                             add_sys_log(user_id, f"HARD REJECT: Amount match ₹{amount} arrived after order expiry ({p_exp}). Marked as expired.")
                                         else:
-                                            c_db.execute("UPDATE transactions SET status='completed', utr=?, paid_at=? WHERE txn_id=?", (utr, now_str, p_id))
+                                            c_db.execute("UPDATE transactions SET status='completed', utr=%s, paid_at=%s WHERE txn_id=%s", (utr, now_str, p_id))
                                             conn_db.commit()
                                             txn_completed_now = True
                                             completed_txn = (p_id, 'completed', p_cb, p_m_id)
@@ -2509,9 +2510,9 @@ def monitor_gmails():
                                     threading.Thread(target=send_telegram_alert, args=(user_id, completed_txn[0], amount, utr)).start()
                                     
                                     # Fetch email just in case
-                                    conn_fetch = sqlite3.connect(DB_FILE)
-                                    c_fetch = conn_fetch.cursor()
-                                    c_fetch.execute("SELECT customer_email FROM transactions WHERE txn_id=?", (completed_txn[0],))
+                                    conn_fetch = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+                                    c_fetch = conn_fetch.cursor(cursor_factory=DictCursor)
+                                    c_fetch.execute("SELECT customer_email FROM transactions WHERE txn_id=%s", (completed_txn[0],))
                                     email_row = c_fetch.fetchone()
                                     conn_fetch.close()
                                     
@@ -2544,9 +2545,9 @@ def api_docs():
 def regenerate_key():
     user_id = session['user_id']
     new_api_key = 'FAM' + secrets.token_hex(16).upper()
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute('UPDATE users SET api_key = ? WHERE user_id = ?', (new_api_key, user_id))
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
+    c.execute('UPDATE users SET api_key = %s WHERE user_id = %s', (new_api_key, user_id))
     conn.commit()
     conn.close()
     
@@ -2562,9 +2563,9 @@ def regenerate_key():
 def retry_webhook(log_id):
     if 'user_id' not in session: return jsonify({'status': 'error', 'message': 'Unauthorized'}), 401
     
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("SELECT url, payload FROM webhook_logs WHERE id = ? AND user_id = ?", (log_id, session['user_id']))
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
+    c.execute("SELECT url, payload FROM webhook_logs WHERE id = %s AND user_id = %s", (log_id, session['user_id']))
     log = c.fetchone()
     
     if not log:
@@ -2581,7 +2582,7 @@ def retry_webhook(log_id):
     except:
         pass
         
-    c.execute("UPDATE webhook_logs SET status = ?, created_at = CURRENT_TIMESTAMP WHERE id = ?", (status, log_id))
+    c.execute("UPDATE webhook_logs SET status = %s, created_at = CURRENT_TIMESTAMP WHERE id = %s", (status, log_id))
     conn.commit()
     conn.close()
     
@@ -2599,10 +2600,10 @@ def super_admin():
 def admin_ban(user_id):
     if not session.get('is_admin'): return redirect(url_for('super_admin'))
     
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
     # To ban, we just wipe their API key and credentials so they can't login or use the gateway
-    c.execute("UPDATE users SET password_hash = 'BANNED', api_key = NULL, gmail = NULL, app_pass = NULL WHERE user_id = ?", (user_id,))
+    c.execute("UPDATE users SET password_hash = 'BANNED', api_key = NULL, gmail = NULL, app_pass = NULL WHERE user_id = %s", (user_id,))
     conn.commit()
     conn.close()
     return redirect(url_for('super_admin'))
@@ -2612,9 +2613,9 @@ def webhook_logs():
     if 'user_id' not in session:
         return redirect(url_for('login'))
         
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("SELECT id, txn_id, url, payload, response_code, response_body, sent_at FROM webhook_logs WHERE user_id=? ORDER BY sent_at DESC LIMIT 50", (session['user_id'],))
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
+    c.execute("SELECT id, txn_id, url, payload, response_code, response_body, sent_at FROM webhook_logs WHERE user_id=%s ORDER BY sent_at DESC LIMIT 50", (session['user_id'],))
     logs = c.fetchall()
     conn.close()
     
@@ -2625,9 +2626,9 @@ def system_logs_api():
     if 'user_id' not in session:
         return jsonify({"error": "Unauthorized"}), 401
     
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("SELECT log_msg, log_time FROM system_logs WHERE user_id=? ORDER BY id DESC LIMIT 50", (session['user_id'],))
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
+    c.execute("SELECT log_msg, log_time FROM system_logs WHERE user_id=%s ORDER BY id DESC LIMIT 50", (session['user_id'],))
     logs = c.fetchall()
     conn.close()
     
@@ -2651,8 +2652,8 @@ def upgrade_plan():
         
     amount = 30.0 if plan_name == 'Basic' else 60.0
     
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
     # Find the Admin user (assumed role='admin', or fallback to user_id=1)
     c.execute("SELECT user_id FROM users WHERE role='admin' ORDER BY user_id ASC LIMIT 1")
     admin_row = c.fetchone()
@@ -2700,8 +2701,8 @@ def subscription_webhook():
     plan_name = parts[2]
     
     # We must verify the signature using the Admin's API key
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
     
     c.execute("SELECT user_id, api_key FROM users WHERE role='admin' ORDER BY user_id ASC LIMIT 1")
     admin_row = c.fetchone()
@@ -2727,7 +2728,7 @@ def subscription_webhook():
     # 30 day expiry
     plan_expiry = (datetime.now() + timedelta(days=30)).isoformat()
     # RESET links_used to 0 to unlock fresh capacity!
-    c.execute("UPDATE users SET plan_name=?, plan_expiry=?, links_used=0 WHERE user_id=?", (plan_name, plan_expiry, target_user_id))
+    c.execute("UPDATE users SET plan_name=%s, plan_expiry=%s, links_used=0 WHERE user_id=%s", (plan_name, plan_expiry, target_user_id))
     conn.commit()
     conn.close()
     
@@ -2750,6 +2751,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 

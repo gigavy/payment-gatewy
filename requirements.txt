@@ -4,3 +4,4 @@ pillow
 
 requests
 cryptography
+psycopg2-binary 
