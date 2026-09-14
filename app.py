@@ -2607,7 +2607,7 @@ def imap_thread_worker(user_id, gmail_user, app_pass):
                     mail.login(gmail_user, decrypt_pass(app_pass))
                     mail.select("INBOX")
                     
-            status, messages = mail.search(None, '(UNSEEN)')
+            status, messages = mail.search(None, '(UNSEEN OR FROM "paytm" FROM "famapp")')
             if status == 'OK' and messages[0]:
                 msg_nums = messages[0].split()
                 print(f"[IMAP] Found {len(msg_nums)} UNREAD emails for user {user_id}", flush=True)
@@ -2777,6 +2777,8 @@ def monitor_gmails():
             if ag and ag[0] and ap and ap[0]:
                 users.append((0, ag[0], ap[0]))
             conn.close()
+            
+            print(f"[IMAP-MASTER] Heartbeat active. Found {len(users)} configured accounts.", flush=True)
             
             new_cache = {}
             for uid, g, p in users:
