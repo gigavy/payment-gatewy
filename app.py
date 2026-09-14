@@ -1802,12 +1802,9 @@ def generate_link():
         WHERE user_id = %s AND (
             is_admin_bypass = 1 OR 
             links_used < (
-                CASE plan_name 
-                    WHEN 'Free' THEN 15 
-                    WHEN 'Basic' THEN 31 
-                    WHEN 'Pro' THEN 66 
-                    ELSE 15 
-                END
+                15 + 
+                (CASE WHEN plan_name LIKE '%%Basic%%' THEN 31 ELSE 0 END) +
+                (CASE WHEN plan_name LIKE '%%Pro%%' THEN 66 ELSE 0 END)
             )
         )
     ''', (user_id,))
@@ -1913,12 +1910,9 @@ def api_create_order():
         WHERE user_id = %s AND (
             is_admin_bypass = 1 OR 
             links_used < (
-                CASE plan_name 
-                    WHEN 'Free' THEN 15 
-                    WHEN 'Basic' THEN 31 
-                    WHEN 'Pro' THEN 66 
-                    ELSE 15 
-                END
+                15 + 
+                (CASE WHEN plan_name LIKE '%%Basic%%' THEN 31 ELSE 0 END) +
+                (CASE WHEN plan_name LIKE '%%Pro%%' THEN 66 ELSE 0 END)
             )
         )
     ''', (user_id,))
@@ -2647,9 +2641,21 @@ def monitor_gmails():
                                             s_plan = parts[2]
                                             s_uid = parts[3]
                                             plan_expiry = (datetime.now() + timedelta(days=30)).isoformat()
-                                            c_check.execute("UPDATE users SET plan_name=%s, plan_expiry=%s, links_used=0 WHERE user_id=%s", (s_plan, plan_expiry, s_uid))
+                                            
+                                            c_check.execute("SELECT plan_name FROM users WHERE user_id=%s", (s_uid,))
+                                            curr_row = c_check.fetchone()
+                                            curr_plan = curr_row[0] if curr_row and curr_row[0] else "Free"
+                                            if s_plan not in curr_plan:
+                                                if curr_plan == "Free" or not curr_plan:
+                                                    new_plan = s_plan
+                                                else:
+                                                    new_plan = curr_plan + "," + s_plan
+                                            else:
+                                                new_plan = curr_plan
+
+                                            c_check.execute("UPDATE users SET plan_name=%s, plan_expiry=%s, links_used=0 WHERE user_id=%s", (new_plan, plan_expiry, s_uid))
                                             conn_check.commit()
-                                            add_sys_log(s_uid, f"Subscription VERIFIED via Txn! Upgraded to {s_plan}")
+                                            add_sys_log(s_uid, f"Subscription VERIFIED via Txn! Plan added: {s_plan}")
                                     conn_check.close()
                                     
                                     # Fetch email just in case
@@ -2803,6 +2809,10 @@ def upgrade_plan():
     plan_name = request.form.get('plan_name')
     if plan_name not in ['Basic', 'Pro']:
         return redirect(url_for('plans', error='Invalid plan selected.'))
+        
+    user_info = get_user(target_user_id)
+    if plan_name in user_info.get('plan_name', ''):
+        return redirect(url_for('plans', error=f'You already have the {plan_name} plan active!'))
     
     # Get price from system settings (admin-configurable)
     price_key = f'plan_price_{plan_name}'
