@@ -606,11 +606,11 @@ def admin_settings():
     if yt_link is not None:
         yt_link = yt_link.strip()
         if yt_link:
-            if "youtu.be/" in yt_link:
-                vid_id = yt_link.split("youtu.be/")[1].split("?")[0]
-                yt_link = f"https://www.youtube.com/embed/{vid_id}"
-            elif "youtube.com/watch" in yt_link and "v=" in yt_link:
-                vid_id = yt_link.split("v=")[1].split("&")[0]
+            import re
+            yt_regex = r'(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([^"&?\/\s]{11})'
+            match = re.search(yt_regex, yt_link)
+            if match:
+                vid_id = match.group(1)
                 yt_link = f"https://www.youtube.com/embed/{vid_id}"
         set_sys_setting('youtube_link', yt_link)
     if wa_number is not None: set_sys_setting('support_whatsapp', wa_number)
