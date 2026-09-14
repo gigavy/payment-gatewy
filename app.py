@@ -1050,6 +1050,13 @@ def dashboard():
     total_count = row[0] or 0
     total_amount = row[1] or 0
     
+    # Get pending and failed counts
+    c.execute("SELECT COUNT(*) FROM transactions WHERE user_id=%s AND status='pending'", (user_id,))
+    pending_count = c.fetchone()[0] or 0
+    
+    c.execute("SELECT COUNT(*) FROM transactions WHERE user_id=%s AND status='failed'", (user_id,))
+    failed_count = c.fetchone()[0] or 0
+    
     # Recent transactions (all statuses)
     c.execute("SELECT txn_id, amount, utr, paid_at, status FROM transactions WHERE user_id=%s ORDER BY created_at DESC LIMIT 15", (user_id,))
     txns = c.fetchall()
@@ -1073,6 +1080,8 @@ def dashboard():
     return render_template('dashboard.html', 
                            user_info=user_info, 
                            total_count=total_count or 0, 
+                           pending_count=pending_count or 0,
+                           failed_count=failed_count or 0,
                            total_amount=f"{total_amount or 0:.2f}",
                            txns=txns,
                            chart_labels=chart_labels,
