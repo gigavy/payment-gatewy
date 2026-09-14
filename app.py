@@ -2577,11 +2577,192 @@ def send_webhook(user_id, callback_url, txn_id, merchant_order_id, amount, utr):
         conn.close()
     except Exception as e:
         print(f"Webhook failed for {txn_id}: {e}")
-# Global dict to hold persistent IMAP connections
-imap_connections = {}
+# Global state for high-performance IMAP threading
+merchant_credentials_cache = {}
+active_merchant_threads = {}
+
+def imap_thread_worker(user_id, gmail_user, app_pass):
+    print(f"[IMAP-THREAD] Starting high-speed worker for user {user_id}", flush=True)
+    mail = None
+    processed_msg_ids = set()
+    
+    while True:
+        if user_id not in merchant_credentials_cache or merchant_credentials_cache[user_id] != (gmail_user, app_pass):
+            print(f"[IMAP-THREAD] Terminating old worker for user {user_id}", flush=True)
+            if mail:
+                try: mail.logout()
+                except: pass
+            break
+            
+        try:
+            if not mail:
+                mail = imaplib.IMAP4_SSL("imap.gmail.com", timeout=10)
+                mail.login(gmail_user, decrypt_pass(app_pass))
+                mail.select("INBOX")
+            else:
+                try:
+                    mail.select("INBOX")
+                except:
+                    mail = imaplib.IMAP4_SSL("imap.gmail.com", timeout=10)
+                    mail.login(gmail_user, decrypt_pass(app_pass))
+                    mail.select("INBOX")
+                    
+            status, messages = mail.search(None, '(UNSEEN)')
+            if status == 'OK' and messages[0]:
+                msg_nums = messages[0].split()
+                print(f"[IMAP] Found {len(msg_nums)} UNREAD emails for user {user_id}", flush=True)
+                
+                batch = msg_nums[-10:]
+                batch.reverse()
+                
+                for num in batch:
+                    status, data = mail.fetch(num, '(RFC822)')
+                    if status != 'OK': continue
+
+                    msg = email.message_from_bytes(data[0][1])
+                    
+                    msg_id = msg.get("Message-ID")
+                    if msg_id:
+                        if msg_id in processed_msg_ids:
+                            continue
+                        processed_msg_ids.add(msg_id)
+                        if len(processed_msg_ids) > 10000:
+                            processed_msg_ids.clear()
+                            
+                    auth_results = msg.get("Authentication-Results", "").lower()
+                    if auth_results and ("dkim=fail" in auth_results or "spf=fail" in auth_results):
+                        add_sys_log(user_id, "REJECTED: Spoofed/Fake Email detected (DKIM/SPF failed).")
+                        continue 
+                    
+                    body = ""
+                    if msg.is_multipart():
+                        for part in msg.walk():
+                            ctype = part.get_content_type()
+                            if ctype == "text/plain":
+                                body += part.get_payload(decode=True).decode('utf-8', errors='ignore') + " "
+                            elif ctype == "text/html":
+                                html = part.get_payload(decode=True).decode('utf-8', errors='ignore')
+                                body += re.sub(r'<[^>]+>', ' ', html) + " "
+                    else:
+                        payload = msg.get_payload(decode=True).decode('utf-8', errors='ignore')
+                        if msg.get_content_type() == "text/html":
+                            body = re.sub(r'<[^>]+>', ' ', payload)
+                        else:
+                            body = payload
+
+                    text = str(msg.get("Subject", "")) + " " + body
+                    
+                    amt_match = re.search(r'(?:Rs\.?|INR|\u20B9)\s*([\d,]+\.?\d*)', text, re.IGNORECASE)
+                    utr_match = re.search(r'(?:UPI\s*Ref(?:erence)?\s*(?:No\.?)?|UTR|Txn\s*ID|Transaction\s*ID|RRN|Order\s*ID|Reference\s*ID|Ref\s*No\.?)\s*[:.-]?\s*([A-Za-z0-9]{8,30})', text, re.IGNORECASE)
+
+                    if amt_match:
+                        try:
+                            amount_str = amt_match.group(1).replace(',', '')
+                            if not amount_str.strip(): raise ValueError("Empty amount")
+                            amount = float(amount_str)
+                        except ValueError:
+                            continue
+
+                        utr = utr_match.group(1) if utr_match else f"AUTO_{int(time.time())}"
+                        add_sys_log(user_id, f"Parsed Payment: ₹{amount} (UTR: {utr})")
+
+                        conn_db = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+                        c_db = conn_db.cursor(cursor_factory=DictCursor)
+                        now_str = datetime.now().isoformat()
+                        
+                        c_db.execute("SELECT txn_id, status, callback_url, merchant_order_id, expires_at FROM transactions WHERE utr=%s", (utr,))
+                        row = c_db.fetchone()
+                        txn_completed_now = False
+                        
+                        now_cmp = str(datetime.now())[:19]
+                        
+                        if row:
+                            t_id, t_status, t_cb, t_m_id, t_exp = row
+                            if t_exp and now_cmp > str(t_exp)[:19].replace('T', ' '):
+                                c_db.execute("UPDATE transactions SET status='expired' WHERE txn_id=%s", (t_id,))
+                                conn_db.commit()
+                                add_sys_log(user_id, f"HARD REJECT: Payment with UTR {utr} arrived after expiry window ({t_exp}). Marked as expired.")
+                            elif t_status == 'pending':
+                                c_db.execute("UPDATE transactions SET status='completed', paid_at=%s WHERE txn_id=%s", (now_str, t_id))
+                                conn_db.commit()
+                                txn_completed_now = True
+                                completed_txn = (t_id, 'completed', t_cb, t_m_id)
+                        else:
+                            c_db.execute("""SELECT txn_id, callback_url, merchant_order_id, expires_at 
+                                            FROM transactions 
+                                            WHERE user_id=%s AND status='pending' AND ABS(amount - %s) < 0.01 
+                                              AND (utr IS NULL OR utr='') 
+                                            ORDER BY created_at DESC LIMIT 1""", (user_id, amount))
+                            pending_txn = c_db.fetchone()
+                            if pending_txn:
+                                p_id, p_cb, p_m_id, p_exp = pending_txn
+                                if p_exp and now_cmp > str(p_exp)[:19].replace('T', ' '):
+                                    c_db.execute("UPDATE transactions SET status='expired' WHERE txn_id=%s", (p_id,))
+                                    conn_db.commit()
+                                    add_sys_log(user_id, f"HARD REJECT: Amount match ₹{amount} arrived after order expiry ({p_exp}). Marked as expired.")
+                                else:
+                                    c_db.execute("UPDATE transactions SET status='completed', utr=%s, paid_at=%s WHERE txn_id=%s", (utr, now_str, p_id))
+                                    conn_db.commit()
+                                    txn_completed_now = True
+                                    completed_txn = (p_id, 'completed', p_cb, p_m_id)
+                                    
+                        conn_db.close()
+                        
+                        if txn_completed_now:
+                            add_sys_log(user_id, f"Match Success! Verified Txn ID: {completed_txn[0]}")
+                            
+                            conn_check = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+                            c_check = conn_check.cursor(cursor_factory=DictCursor)
+                            c_check.execute("SELECT merchant_order_id FROM transactions WHERE txn_id=%s", (completed_txn[0],))
+                            m_ord_row = c_check.fetchone()
+                            if m_ord_row and m_ord_row[0] and str(m_ord_row[0]).startswith("SUB_UPGRADE_"):
+                                parts = str(m_ord_row[0]).split('_')
+                                if len(parts) >= 4:
+                                    s_plan = parts[2]
+                                    s_uid = parts[3]
+                                    plan_expiry = (datetime.now() + timedelta(days=7)).isoformat()
+                                    
+                                    c_check.execute("SELECT plan_name FROM users WHERE user_id=%s", (s_uid,))
+                                    curr_row = c_check.fetchone()
+                                    curr_plan = curr_row[0] if curr_row and curr_row[0] else "Free"
+                                    if s_plan not in curr_plan:
+                                        if curr_plan == "Free" or not curr_plan:
+                                            new_plan = s_plan
+                                        else:
+                                            new_plan = curr_plan + "," + s_plan
+                                    else:
+                                        new_plan = curr_plan
+
+                                    c_check.execute("UPDATE users SET plan_name=%s, plan_expiry=%s, links_used=0 WHERE user_id=%s", (new_plan, plan_expiry, s_uid))
+                                    conn_check.commit()
+                                    add_sys_log(s_uid, f"Subscription VERIFIED via Txn! Plan added: {s_plan}")
+                            conn_check.close()
+                            
+                            conn_fetch = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+                            c_fetch = conn_fetch.cursor(cursor_factory=DictCursor)
+                            c_fetch.execute("SELECT customer_email FROM transactions WHERE txn_id=%s", (completed_txn[0],))
+                            email_row = c_fetch.fetchone()
+                            conn_fetch.close()
+                            
+                            if email_row and email_row[0]:
+                                threading.Thread(target=send_email_receipt, args=(user_id, email_row[0], completed_txn[0], amount, utr, now_str)).start()
+                            
+                            if user_id != 0:
+                                threading.Thread(target=send_telegram_alert, args=(user_id, completed_txn[0], amount, utr)).start()
+                                threading.Thread(target=send_merchant_notification, args=(user_id, completed_txn[0], amount, utr, now_str)).start()
+                            
+                            if completed_txn[2]:
+                                threading.Thread(target=send_webhook, args=(user_id, completed_txn[2], completed_txn[0], completed_txn[3], amount, utr)).start()
+        except Exception as e:
+            print(f"[IMAP-THREAD] Error for user {user_id}: {e}", flush=True)
+            mail = None
+            time.sleep(2.0)
+            
+        # 1.5 seconds is the sweet spot: fast enough for near-instant verification, slow enough to avoid Gmail rate limits
+        time.sleep(1.5)
 
 def monitor_gmails():
-    processed_msg_ids = set()
+    global merchant_credentials_cache, active_merchant_threads
     while True:
         try:
             conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
@@ -2589,236 +2770,30 @@ def monitor_gmails():
             c.execute("SELECT user_id, gmail, app_pass FROM users WHERE gmail IS NOT NULL AND app_pass IS NOT NULL")
             users = list(c.fetchall())
             
-            # Also add the Admin's payment Gmail for subscription verification
             c.execute("SELECT value FROM system_settings WHERE key='admin_payment_gmail'")
-            admin_gmail_row = c.fetchone()
+            ag = c.fetchone()
             c.execute("SELECT value FROM system_settings WHERE key='admin_payment_app_pass'")
-            admin_pass_row = c.fetchone()
-            if admin_gmail_row and admin_gmail_row[0] and admin_pass_row and admin_pass_row[0]:
-                # Use user_id 0 as sentinel for admin subscription account
-                users.append((0, admin_gmail_row[0], admin_pass_row[0]))
+            ap = c.fetchone()
+            if ag and ag[0] and ap and ap[0]:
+                users.append((0, ag[0], ap[0]))
             conn.close()
-
-            print(f"[IMAP-HEARTBEAT] Thread is running. Found {len(users)} users configured in DB.", flush=True)
-
-            # Optional: Cleanup removed users from connections
-            valid_user_ids = [u[0] for u in users]
-            for uid in list(imap_connections.keys()):
-                if uid not in valid_user_ids:
-                    try:
-                        imap_connections[uid].logout()
-                    except: pass
-                    del imap_connections[uid]
-
-            for user_id, gmail_user, app_pass in users:
-                if not gmail_user or not app_pass: continue
-                
-                mail = imap_connections.get(user_id)
-                try:
-                    if not mail:
-                        # Connect and login if no active connection
-                        mail = imaplib.IMAP4_SSL("imap.gmail.com", timeout=10)
-                        mail.login(gmail_user, decrypt_pass(app_pass))
-                        imap_connections[user_id] = mail
+            
+            new_cache = {}
+            for uid, g, p in users:
+                new_cache[uid] = (g, p)
+            merchant_credentials_cache = new_cache
+            
+            for uid, (g, p) in merchant_credentials_cache.items():
+                if uid not in active_merchant_threads or not active_merchant_threads[uid].is_alive():
+                    t = threading.Thread(target=imap_thread_worker, args=(uid, g, p), daemon=True)
+                    t.start()
+                    active_merchant_threads[uid] = t
                     
-                    try:
-                        mail.select("INBOX")
-                    except:
-                        # Connection might have died, reconnect
-                        mail = imaplib.IMAP4_SSL("imap.gmail.com", timeout=10)
-                        mail.login(gmail_user, decrypt_pass(app_pass))
-                        mail.select("INBOX")
-                        imap_connections[user_id] = mail
-
-                    # Ask Gmail to filter out all spam/other emails and ONLY return unread emails from Paytm or FamApp
-                    status, messages = mail.search(None, '(UNSEEN OR FROM "paytm" FROM "famapp")')
-
-                    if status == 'OK' and messages[0]:
-                        msg_nums = messages[0].split()
-                        print(f"[IMAP] Found {len(msg_nums)} UNREAD emails for user {user_id}", flush=True)
-                        
-                        # Process the 10 newest unread emails first to ensure instant payment verification 
-                        # even if the inbox has hundreds of old unread emails.
-                        batch = msg_nums[-10:]
-                        batch.reverse()
-                        
-                        for num in batch:
-                            status, data = mail.fetch(num, '(RFC822)')
-                            if status != 'OK': continue
-
-                            msg = email.message_from_bytes(data[0][1])
-                            
-                            # --- ADVANCED SECURITY LOGIC ---
-                            # 1. Message-ID Replay Guard (Prevents double verification)
-                            msg_id = msg.get("Message-ID")
-                            if msg_id:
-                                if msg_id in processed_msg_ids:
-                                    continue
-                                processed_msg_ids.add(msg_id)
-                                # Keep set size manageable
-                                if len(processed_msg_ids) > 10000:
-                                    processed_msg_ids.clear()
-                                    
-                            # 2. DKIM Anti-Fraud Check (Rejects spoofed fake emails)
-                            auth_results = msg.get("Authentication-Results", "").lower()
-                            if auth_results and ("dkim=fail" in auth_results or "spf=fail" in auth_results):
-                                add_sys_log(user_id, "REJECTED: Spoofed/Fake Email detected (DKIM/SPF failed).")
-                                continue # Reject forged emails completely
-                            # --------------------------------
-                            
-                            body = ""
-                            if msg.is_multipart():
-                                for part in msg.walk():
-                                    ctype = part.get_content_type()
-                                    if ctype == "text/plain":
-                                        body += part.get_payload(decode=True).decode('utf-8', errors='ignore') + " "
-                                    elif ctype == "text/html":
-                                        html = part.get_payload(decode=True).decode('utf-8', errors='ignore')
-                                        body += re.sub(r'<[^>]+>', ' ', html) + " "
-                            else:
-                                payload = msg.get_payload(decode=True).decode('utf-8', errors='ignore')
-                                if msg.get_content_type() == "text/html":
-                                    body = re.sub(r'<[^>]+>', ' ', payload)
-                                else:
-                                    body = payload
-
-                            text = str(msg.get("Subject", "")) + " " + body
-                            print(f"[IMAP] Raw Text Snippet: {text[:200].strip()}", flush=True)
-                            
-                            amt_match = re.search(r'(?:Rs\.?|INR|\u20B9)\s*([\d,]+\.?\d*)', text, re.IGNORECASE)
-                            utr_match = re.search(r'(?:UPI\s*Ref(?:erence)?\s*(?:No\.?)?|UTR|Txn\s*ID|Transaction\s*ID|RRN|Order\s*ID|Reference\s*ID|Ref\s*No\.?)\s*[:.-]?\s*([A-Za-z0-9]{8,30})', text, re.IGNORECASE)
-
-                            if amt_match:
-                                try:
-                                    amount_str = amt_match.group(1).replace(',', '')
-                                    if not amount_str.strip(): raise ValueError("Empty amount")
-                                    amount = float(amount_str)
-                                except ValueError:
-                                    print(f"[IMAP] False positive amount match ignored. Raw: {text[:100]}", flush=True)
-                                    continue
-
-                                utr = utr_match.group(1) if utr_match else f"AUTO_{int(time.time())}"
-                                print(f"[IMAP] SUCCESS - Extracted Amount: {amount} | UTR: {utr}", flush=True)
-                                add_sys_log(user_id, f"Parsed Payment: ₹{amount} (UTR: {utr})")
-
-                                conn_db = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
-                                c_db = conn_db.cursor(cursor_factory=DictCursor)
-                                now_str = datetime.now().isoformat()
-                                
-                                # Check if user manually submitted this UTR
-                                c_db.execute("SELECT txn_id, status, callback_url, merchant_order_id, expires_at FROM transactions WHERE utr=%s", (utr,))
-                                row = c_db.fetchone()
-                                txn_completed_now = False
-                                
-                                now_cmp = str(datetime.now())[:19]
-                                
-                                if row:
-                                    t_id, t_status, t_cb, t_m_id, t_exp = row
-                                    print(f"[IMAP] Found exact UTR match for Txn: {t_id}", flush=True)
-                                    # Hard Gate: Expire order if time crossed
-                                    if t_exp and now_cmp > str(t_exp)[:19].replace('T', ' '):
-                                        print(f"[IMAP] Hard reject: Transaction expired", flush=True)
-                                        c_db.execute("UPDATE transactions SET status='expired' WHERE txn_id=%s", (t_id,))
-                                        conn_db.commit()
-                                        add_sys_log(user_id, f"HARD REJECT: Payment with UTR {utr} arrived after expiry window ({t_exp}). Marked as expired.")
-                                    elif t_status == 'pending':
-                                        c_db.execute("UPDATE transactions SET status='completed', paid_at=%s WHERE txn_id=%s", (now_str, t_id))
-                                        conn_db.commit()
-                                        txn_completed_now = True
-                                        completed_txn = (t_id, 'completed', t_cb, t_m_id)
-                                        print(f"[IMAP] Verified successfully via UTR match!", flush=True)
-                                else:
-                                    # Amount-based fallback (if UTR not submitted by user yet)
-                                    print(f"[IMAP] No UTR match, attempting Amount Fallback for user {user_id}, amount {amount}...", flush=True)
-                                    c_db.execute("""SELECT txn_id, callback_url, merchant_order_id, expires_at 
-                                                    FROM transactions 
-                                                    WHERE user_id=%s AND status='pending' AND ABS(amount - %s) < 0.01 
-                                                      AND (utr IS NULL OR utr='') 
-                                                    ORDER BY created_at DESC LIMIT 1""", (user_id, amount))
-                                    pending_txn = c_db.fetchone()
-                                    if pending_txn:
-                                        p_id, p_cb, p_m_id, p_exp = pending_txn
-                                        print(f"[IMAP] Found pending transaction {p_id} matching amount!", flush=True)
-                                        if p_exp and now_cmp > str(p_exp)[:19].replace('T', ' '):
-                                            print(f"[IMAP] Hard reject: Transaction expired", flush=True)
-                                            c_db.execute("UPDATE transactions SET status='expired' WHERE txn_id=%s", (p_id,))
-                                            conn_db.commit()
-                                            add_sys_log(user_id, f"HARD REJECT: Amount match ₹{amount} arrived after order expiry ({p_exp}). Marked as expired.")
-                                        else:
-                                            c_db.execute("UPDATE transactions SET status='completed', utr=%s, paid_at=%s WHERE txn_id=%s", (utr, now_str, p_id))
-                                            conn_db.commit()
-                                            txn_completed_now = True
-                                            completed_txn = (p_id, 'completed', p_cb, p_m_id)
-                                            print(f"[IMAP] Verified successfully via Amount match!", flush=True)
-                                    else:
-                                        print(f"[IMAP] FAILED: No pending transaction found for user {user_id} with amount {amount}", flush=True)
-                                        
-                                conn_db.close()
-                                
-                                # Fire webhook, Telegram alert and Email if completed now
-                                if txn_completed_now:
-                                    add_sys_log(user_id, f"Match Success! Verified Txn ID: {completed_txn[0]}")
-                                    
-                                    # Handle Subscription Upgrades directly embedded in transactions
-                                    conn_check = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
-                                    c_check = conn_check.cursor(cursor_factory=DictCursor)
-                                    c_check.execute("SELECT merchant_order_id FROM transactions WHERE txn_id=%s", (completed_txn[0],))
-                                    m_ord_row = c_check.fetchone()
-                                    if m_ord_row and m_ord_row[0] and str(m_ord_row[0]).startswith("SUB_UPGRADE_"):
-                                        parts = str(m_ord_row[0]).split('_')
-                                        if len(parts) >= 4:
-                                            s_plan = parts[2]
-                                            s_uid = parts[3]
-                                            plan_expiry = (datetime.now() + timedelta(days=7)).isoformat()
-                                            
-                                            c_check.execute("SELECT plan_name FROM users WHERE user_id=%s", (s_uid,))
-                                            curr_row = c_check.fetchone()
-                                            curr_plan = curr_row[0] if curr_row and curr_row[0] else "Free"
-                                            if s_plan not in curr_plan:
-                                                if curr_plan == "Free" or not curr_plan:
-                                                    new_plan = s_plan
-                                                else:
-                                                    new_plan = curr_plan + "," + s_plan
-                                            else:
-                                                new_plan = curr_plan
-
-                                            c_check.execute("UPDATE users SET plan_name=%s, plan_expiry=%s, links_used=0 WHERE user_id=%s", (new_plan, plan_expiry, s_uid))
-                                            conn_check.commit()
-                                            add_sys_log(s_uid, f"Subscription VERIFIED via Txn! Plan added: {s_plan}")
-                                    conn_check.close()
-                                    
-                                    # Fetch email just in case
-                                    conn_fetch = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
-                                    c_fetch = conn_fetch.cursor(cursor_factory=DictCursor)
-                                    c_fetch.execute("SELECT customer_email FROM transactions WHERE txn_id=%s", (completed_txn[0],))
-                                    email_row = c_fetch.fetchone()
-                                    conn_fetch.close()
-                                    
-                                    if email_row and email_row[0]:
-                                        threading.Thread(target=send_email_receipt, args=(user_id, email_row[0], completed_txn[0], amount, utr, now_str)).start()
-                                    
-                                    # Dispatch Instant Telegram Alert (skip for admin user_id=0)
-                                    if user_id != 0:
-                                        threading.Thread(target=send_telegram_alert, args=(user_id, completed_txn[0], amount, utr)).start()
-                                        threading.Thread(target=send_merchant_notification, args=(user_id, completed_txn[0], amount, utr, now_str)).start()
-                                    
-                                    if completed_txn[2]:
-                                        threading.Thread(target=send_webhook, args=(user_id, completed_txn[2], completed_txn[0], completed_txn[3], amount, utr)).start()
-                            else:
-                                print(f"[IMAP] FAILED TO EXTRACT AMOUNT. Raw email: {text[:200]}", flush=True)
-                                add_sys_log(user_id, f"Regex failed! Unrecognized Email format: {text[:100]}...")
-                                
-
-                                    
-                except Exception as e:
-                    print(f"[IMAP] Fatal error for user {user_id} ({gmail_user}): {e}", flush=True)
-                    # If any error (e.g. connection drop), remove from persistent dict to force reconnect next loop
-                    if user_id in imap_connections:
-                        del imap_connections[user_id]
         except Exception as e:
-            print(f"[IMAP] Outer loop fatal error: {e}", flush=True)
-            pass
-        time.sleep(1.5)
+            print(f"[IMAP-MASTER] error: {e}", flush=True)
+            
+        time.sleep(20.0)
+
 
 @app.route('/api_docs')
 def api_docs():
