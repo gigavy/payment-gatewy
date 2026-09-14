@@ -105,10 +105,16 @@
                             </div>
                         </div>
 
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Email Address</label>
-                            <input type="email" name="email" value="{{ user_info.email if user_info else '' }}" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition" placeholder="name@business.com">
-                            <p class="text-[11px] text-slate-400 mt-1">Validated for correct format and uniqueness across merchant accounts.</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Email Address</label>
+                                <input type="email" name="email" value="{{ user_info.email if user_info else '' }}" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition" placeholder="name@business.com">
+                                <p class="text-[11px] text-slate-400 mt-1">Validated for uniqueness.</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Mobile Number</label>
+                                <input type="tel" name="mobile" value="{{ user_info.mobile if user_info else '' }}" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition" placeholder="e.g. 9876543210">
+                            </div>
                         </div>
 
                         <div class="pt-2 flex justify-end">
@@ -120,38 +126,8 @@
                 </div>
             </div>
 
-            <!-- Right: Mobile OTP & Change Password Cards -->
+            <!-- Right: Change Password Cards -->
             <div class="space-y-6">
-                
-                <!-- Mobile Verification Card -->
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="flex items-center gap-2.5">
-                            <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-sm">
-                                <i class="fa-solid fa-phone"></i>
-                            </div>
-                            <h4 class="text-sm font-bold text-slate-800">Mobile Verification</h4>
-                        </div>
-                        {% if user_info and user_info.mobile %}
-                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">Verified</span>
-                        {% else %}
-                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">Action Required</span>
-                        {% endif %}
-                    </div>
-
-                    <p class="text-xs text-slate-500 mb-4">Your mobile number is used as a verified emergency recovery path. Any change requires OTP confirmation.</p>
-
-                    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 mb-4">
-                        <div class="text-[11px] text-slate-400 font-medium">Registered Number</div>
-                        <div class="text-sm font-mono font-bold text-slate-800 mt-0.5">
-                            {{ user_info.mobile if user_info and user_info.mobile else 'Not yet verified' }}
-                        </div>
-                    </div>
-
-                    <button type="button" onclick="openMobileOtpModal()" class="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-mobile-screen"></i> Update with OTP Verification
-                    </button>
-                </div>
 
                 <!-- Security Quick Card -->
                 <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
@@ -386,50 +362,6 @@
 
 <!-- ==================== MODALS ==================== -->
 
-<!-- 1. Mobile OTP Modal -->
-<div id="mobileOtpModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 transform transition-all">
-        <div class="flex items-center justify-between mb-4">
-            <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-lg">
-                <i class="fa-solid fa-mobile-screen"></i>
-            </div>
-            <button onclick="closeMobileOtpModal()" class="text-slate-400 hover:text-slate-600 text-lg">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-        </div>
-
-        <h3 class="text-base font-bold text-slate-800 mb-1">Verify Mobile Number</h3>
-        <p class="text-xs text-slate-500 mb-5">We will send an OTP confirmation to register this phone for account recovery.</p>
-
-        <!-- Step 1: Request OTP -->
-        <div id="otpStep1" class="space-y-4">
-            <div>
-                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Mobile Number</label>
-                <input type="tel" id="otpMobileInput" value="{{ user_info.mobile if user_info and user_info.mobile else '' }}" placeholder="e.g. 9876543210" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition">
-            </div>
-            <button type="button" onclick="requestMobileOtp()" id="sendOtpBtn" class="w-full py-3 bg-primary hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-2">
-                <span>Send Verification Code</span>
-            </button>
-        </div>
-
-        <!-- Step 2: Enter OTP -->
-        <div id="otpStep2" class="space-y-4 hidden">
-            <div class="p-3 bg-indigo-50/60 border border-indigo-100 rounded-xl text-xs text-primary font-medium flex items-center gap-2">
-                <i class="fa-solid fa-info-circle"></i>
-                <span id="otpNotice">Code sent to your mobile.</span>
-            </div>
-            <div>
-                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Enter 6-Digit Code</label>
-                <input type="text" id="otpCodeInput" maxlength="6" placeholder="123456" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-center text-xl font-mono font-black text-slate-800 tracking-widest focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition">
-            </div>
-            <button type="button" onclick="verifyMobileOtp()" id="verifyOtpBtn" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition shadow-sm flex items-center justify-center gap-2">
-                <span>Confirm & Update Mobile</span>
-            </button>
-        </div>
-    </div>
-</div>
-
-
 <!-- ==================== SCRIPTS ==================== -->
 <script>
     const CSRF_TOKEN = "{{ csrf_token }}";
@@ -498,99 +430,6 @@
             e.returnValue = 'You have unsaved changes in settings. Are you sure you want to leave?';
         }
     });
-
-    // Mobile OTP Flow
-    function openMobileOtpModal() {
-        document.getElementById('mobileOtpModal').classList.remove('hidden');
-        document.getElementById('otpStep1').classList.remove('hidden');
-        document.getElementById('otpStep2').classList.add('hidden');
-    }
-
-    function closeMobileOtpModal() {
-        document.getElementById('mobileOtpModal').classList.add('hidden');
-    }
-
-    async function requestMobileOtp() {
-        const mobile = document.getElementById('otpMobileInput').value.trim();
-        if (!mobile) {
-            Swal.fire('Required', 'Please enter a valid mobile number', 'info');
-            return;
-        }
-
-        const btn = document.getElementById('sendOtpBtn');
-        const orig = btn.innerHTML;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending...';
-        btn.disabled = true;
-
-        try {
-            const formData = new FormData();
-            formData.append('mobile', mobile);
-            formData.append('csrf_token', CSRF_TOKEN);
-
-            const res = await fetch('/settings/request_mobile_otp', {
-                method: 'POST',
-                body: formData
-            });
-            const data = await res.json();
-
-            if (data.status === 'success') {
-                document.getElementById('otpStep1').classList.add('hidden');
-                document.getElementById('otpStep2').classList.remove('hidden');
-                if (data.debug_otp) {
-                    document.getElementById('otpNotice').innerText = 'Code sent! Dev test code: ' + data.debug_otp;
-                }
-            } else {
-                Swal.fire('Error', data.message || 'Failed to send OTP', 'error');
-            }
-        } catch (e) {
-            Swal.fire('Error', 'Network error requesting OTP', 'error');
-        }
-        btn.innerHTML = orig;
-        btn.disabled = false;
-    }
-
-    async function verifyMobileOtp() {
-        const code = document.getElementById('otpCodeInput').value.trim();
-        if (!code) {
-            Swal.fire('Required', 'Please enter the 6-digit OTP code', 'info');
-            return;
-        }
-
-        const btn = document.getElementById('verifyOtpBtn');
-        const orig = btn.innerHTML;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verifying...';
-        btn.disabled = true;
-
-        try {
-            const formData = new FormData();
-            formData.append('otp', code);
-            formData.append('csrf_token', CSRF_TOKEN);
-
-            const res = await fetch('/settings/verify_mobile_otp', {
-                method: 'POST',
-                body: formData
-            });
-            const data = await res.json();
-
-            if (data.status === 'success') {
-                closeMobileOtpModal();
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Verified!',
-                    text: data.message,
-                    confirmButtonColor: '#4f46e5'
-                }).then(() => {
-                    window.location.href = '/settings?tab=profile';
-                });
-            } else {
-                Swal.fire('Error', data.message || 'Invalid code', 'error');
-            }
-        } catch (e) {
-            Swal.fire('Error', 'Network error verifying code', 'error');
-        }
-        btn.innerHTML = orig;
-        btn.disabled = false;
-    }
 
     // Session Management
     async function revokeSession(sessionId) {

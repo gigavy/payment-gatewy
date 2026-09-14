@@ -1187,7 +1187,8 @@ def preview_checkout():
                            qr_url="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=merchant@upi&pn=Merchant&am=499",
                            payment_url="#",
                            profile_pic=profile_pic,
-                           remaining_seconds=300)
+                           remaining_seconds=300,
+                           is_preview=True)
 
 @app.route('/settings')
 @login_required
@@ -1224,6 +1225,7 @@ def settings_profile():
     display_name = request.form.get('display_name', '').strip() or 'Merchant'
     username = request.form.get('username', '').strip()
     email_val = request.form.get('email', '').strip()
+    mobile_val = request.form.get('mobile', '').strip()
     
     if not username:
         return redirect(url_for('settings', tab='profile', error='Username cannot be empty.'))
@@ -1260,11 +1262,11 @@ def settings_profile():
         profile_pic_b64 = f"data:{c_type};base64," + base64.b64encode(file_data).decode('utf-8')
         
     if profile_pic_b64:
-        c.execute("UPDATE users SET display_name=%s, username=%s, email=%s, profile_pic=%s WHERE user_id=%s", 
-                  (display_name, username, email_val, profile_pic_b64, user_id))
+        c.execute("UPDATE users SET display_name=%s, username=%s, email=%s, mobile=%s, profile_pic=%s WHERE user_id=%s", 
+                  (display_name, username, email_val, mobile_val, profile_pic_b64, user_id))
     else:
-        c.execute("UPDATE users SET display_name=%s, username=%s, email=%s WHERE user_id=%s", 
-                  (display_name, username, email_val, user_id))
+        c.execute("UPDATE users SET display_name=%s, username=%s, email=%s, mobile=%s WHERE user_id=%s", 
+                  (display_name, username, email_val, mobile_val, user_id))
     conn.commit()
     conn.close()
     

@@ -283,8 +283,12 @@
             btn.disabled = false;
         }
         
+        const isPreview = {{ 'true' if is_preview else 'false' }};
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        if(isMobile) {
+        
+        // If they are on a real mobile device BUT viewing this in the dashboard preview, 
+        // we force desktop mode so they can see the QR code layout they are designing.
+        if(isMobile && !isPreview) {
             document.getElementById('desktopQrSection').style.display = 'none';
             document.getElementById('mobileIntentContainer').classList.remove('hidden');
             document.getElementById('mobileIntentContainer').classList.add('flex');
