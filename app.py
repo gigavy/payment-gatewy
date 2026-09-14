@@ -2482,7 +2482,8 @@ def monitor_gmails():
                         mail.select("INBOX")
                         imap_connections[user_id] = mail
 
-                    status, messages = mail.search(None, '(UNSEEN)')
+                    # Ask Gmail to filter out all spam/other emails and ONLY return unread emails from Paytm or FamApp
+                    status, messages = mail.search(None, '(UNSEEN OR FROM "paytm" FROM "famapp")')
 
                     if status == 'OK' and messages[0]:
                         msg_nums = messages[0].split()
