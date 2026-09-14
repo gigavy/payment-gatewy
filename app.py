@@ -2789,10 +2789,10 @@ def monitor_gmails():
         time.sleep(1.5)
 
 @app.route('/api_docs')
-@login_required
 def api_docs():
-    user_id = session['user_id']
-    user_info = get_user(user_id)
+    user_info = None
+    if 'user_id' in session:
+        user_info = get_user(session['user_id'])
     return render_template('api_docs.html', user_info=user_info)
 
 @app.route('/regenerate_key', methods=['POST'])
