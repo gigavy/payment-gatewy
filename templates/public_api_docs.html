@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>API Documentation</title>
+    <title>Enterprise API Documentation</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -19,6 +19,7 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
         body { font-family: 'Inter', sans-serif; }
+        html { scroll-behavior: smooth; }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen pb-12">
@@ -36,13 +37,13 @@
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
         <div class="mb-6">
-            <h1 class="text-2xl font-bold text-slate-800">API Documentation</h1>
-            <p class="text-sm font-medium text-slate-500 mt-1">Integrate our payment gateway into your own website or app.</p>
+            <h1 class="text-2xl font-bold text-slate-800">Enterprise API Documentation</h1>
+            <p class="text-sm font-medium text-slate-500 mt-1">Integrate our robust UPI payment gateway in under 5 lines of code.</p>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
             
-            <!-- Left Column: API Keys -->
+            <!-- Left Sidebar: API Keys & Navigation -->
             <div class="lg:col-span-1 space-y-6">
                 <!-- API Key Card -->
                 <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 relative overflow-hidden">
@@ -67,44 +68,97 @@
                         {{ request.host_url.rstrip('/') }}/api
                     </div>
                 </div>
+                
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 sticky top-24 hidden lg:block">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-2">Navigation</h3>
+                    <ul class="space-y-1 text-sm font-medium text-slate-600">
+                        <li><a href="#intro" class="block px-2 py-1.5 hover:bg-slate-50 hover:text-primary rounded-lg transition-colors">1. Core Architecture</a></li>
+                        <li><a href="#idempotency" class="block px-2 py-1.5 hover:bg-slate-50 hover:text-primary rounded-lg transition-colors">2. Idempotency</a></li>
+                        <li><a href="#create-order" class="block px-2 py-1.5 hover:bg-slate-50 hover:text-primary rounded-lg transition-colors">3. Create Order API</a></li>
+                        <li><a href="#check-status" class="block px-2 py-1.5 hover:bg-slate-50 hover:text-primary rounded-lg transition-colors">4. Check Status API</a></li>
+                        <li><a href="#webhooks" class="block px-2 py-1.5 hover:bg-slate-50 hover:text-primary rounded-lg transition-colors">5. Webhook Security</a></li>
+                        <li><a href="#errors" class="block px-2 py-1.5 hover:bg-slate-50 hover:text-primary rounded-lg transition-colors">6. Error Codes</a></li>
+                    </ul>
+                </div>
             </div>
             
             <!-- Right Column: Docs -->
-            <div class="lg:col-span-2">
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-8">
-                    
-                    <!-- Create Order Tab -->
-                    <div class="p-6 border-b border-slate-100">
+            <div class="lg:col-span-3 space-y-8">
+                
+                <!-- 1. Intro -->
+                <div id="intro" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden p-6 scroll-mt-24">
+                    <h2 class="text-xl font-bold text-slate-800 mb-4">1. Introduction & Core Architecture</h2>
+                    <div class="prose prose-slate prose-sm max-w-none text-slate-600 space-y-4">
+                        <p>Welcome to our developer-first REST API. Our architecture is designed to allow you to accept zero-commission UPI payments with absolute enterprise reliability.</p>
+                        <p>The API is organized around REST, accepts <code class="bg-slate-100 px-1 py-0.5 rounded text-primary">application/json</code> encoded requests, returns JSON-encoded responses, and utilizes standard HTTP response codes.</p>
+                        <h4 class="font-bold text-slate-800 text-base mt-6">Authentication</h4>
+                        <p>All endpoints are authenticated using your secret key. You must pass this key in the header <code class="bg-slate-100 px-1 py-0.5 rounded text-primary font-bold">X-Fam-Key</code> for every request. If omitted or invalid, the API returns <code class="bg-red-50 text-red-600 px-1 py-0.5 rounded">401 Unauthorized</code>.</p>
+                    </div>
+                </div>
+
+                <!-- 2. Idempotency -->
+                <div id="idempotency" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden p-6 scroll-mt-24">
+                    <h2 class="text-xl font-bold text-slate-800 mb-4">2. Distributed Systems Reliability: Idempotency</h2>
+                    <div class="prose prose-slate prose-sm max-w-none text-slate-600 space-y-4">
+                        <p>In the context of financial technology, the public internet is fundamentally unreliable. Connections drop, routing tables update, and timeouts occur. Because HTTP POST requests are not inherently idempotent, a naive client retry after a timeout could result in a duplicate payment.</p>
+                        <p>To resolve this, we highly recommend architecting your integration to utilize <strong>Idempotency</strong>. While our API creates unique sessions per request, you should strictly map your internal <code class="bg-slate-100 px-1 py-0.5 rounded text-slate-800">order_id</code> to exactly one payment creation attempt. If a network timeout occurs, you should query the <a href="#check-status" class="text-primary hover:underline">/check-status</a> endpoint using your <code class="bg-slate-100 px-1 py-0.5 rounded text-slate-800">order_id</code> before attempting to create a new order.</p>
+                    </div>
+                </div>
+                
+                <!-- 3. Create Order -->
+                <div id="create-order" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden scroll-mt-24">
+                    <div class="p-6">
                         <div class="flex items-center gap-3 mb-6">
                             <span class="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-black rounded uppercase tracking-wider">POST</span>
-                            <h2 class="text-lg font-bold text-slate-800">/create-order</h2>
+                            <h2 class="text-lg font-bold text-slate-800">/api/create-order</h2>
                         </div>
                         
-                        <p class="text-sm text-slate-600 mb-6">Create a new payment checkout session and get the payment URL to redirect your customer.</p>
+                        <p class="text-sm text-slate-600 mb-6">Creates a payment session, returning a hosted checkout URL where the user can scan a dynamically generated UPI QR code.</p>
                         
-                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Request Headers</h4>
-                        <div class="bg-slate-50 rounded-lg p-4 border border-slate-200 font-mono text-xs mb-6">
-                            <span class="text-slate-400">Content-Type:</span> <span class="text-slate-700">application/json</span><br>
-                            <span class="text-slate-400">X-Fam-Key:</span> <span class="text-primary">&lt;YOUR_SECRET_API_KEY&gt;</span>
-                        </div>
-                        
-                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Request Body (JSON)</h4>
-                        <div class="bg-slate-900 rounded-lg p-4 font-mono text-xs text-blue-300 mb-6 overflow-x-auto">
-<pre>{
-  <span class="text-emerald-400">"amount"</span>: <span class="text-orange-400">499.00</span>, <span class="text-slate-500">// (Required) Float. Amount in INR</span>
-  <span class="text-emerald-400">"order_id"</span>: <span class="text-yellow-300">"ORDER_987654"</span>, <span class="text-slate-500">// (Optional) Your internal order ID</span>
-  <span class="text-emerald-400">"customer_name"</span>: <span class="text-yellow-300">"John Doe"</span>, <span class="text-slate-500">// (Optional) Customer Name</span>
-  <span class="text-emerald-400">"customer_mobile"</span>: <span class="text-yellow-300">"9999999999"</span>, <span class="text-slate-500">// (Optional) Customer Phone</span>
-  <span class="text-emerald-400">"description"</span>: <span class="text-yellow-300">"Pro plan renewal"</span>, <span class="text-slate-500">// (Optional) Payment remarks</span>
-  <span class="text-emerald-400">"callback_url"</span>: <span class="text-yellow-300">"https://your-site.com/webhook"</span> <span class="text-slate-500">// (Optional) URL to receive webhooks</span>
-}</pre>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Request Body Parameters</h4>
+                        <div class="overflow-x-auto mb-6">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="border-b border-slate-200">
+                                        <th class="py-2 text-xs font-bold text-slate-500">Parameter</th>
+                                        <th class="py-2 text-xs font-bold text-slate-500">Type</th>
+                                        <th class="py-2 text-xs font-bold text-slate-500">Required</th>
+                                        <th class="py-2 text-xs font-bold text-slate-500">Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="text-sm text-slate-700">
+                                    <tr class="border-b border-slate-100">
+                                        <td class="py-3 font-mono text-primary">amount</td>
+                                        <td class="py-3">Float</td>
+                                        <td class="py-3"><span class="px-2 py-1 bg-red-100 text-red-700 text-[10px] font-bold rounded">YES</span></td>
+                                        <td class="py-3 text-slate-500">The exact payment amount in INR (e.g., 499.00).</td>
+                                    </tr>
+                                    <tr class="border-b border-slate-100">
+                                        <td class="py-3 font-mono text-primary">order_id</td>
+                                        <td class="py-3">String</td>
+                                        <td class="py-3"><span class="px-2 py-1 bg-slate-100 text-slate-500 text-[10px] font-bold rounded">OPTIONAL</span></td>
+                                        <td class="py-3 text-slate-500">Your system's unique identifier for this order. Highly recommended for idempotency.</td>
+                                    </tr>
+                                    <tr class="border-b border-slate-100">
+                                        <td class="py-3 font-mono text-primary">customer_mobile</td>
+                                        <td class="py-3">String</td>
+                                        <td class="py-3"><span class="px-2 py-1 bg-slate-100 text-slate-500 text-[10px] font-bold rounded">OPTIONAL</span></td>
+                                        <td class="py-3 text-slate-500">Customer's 10-digit mobile number.</td>
+                                    </tr>
+                                    <tr class="border-b border-slate-100">
+                                        <td class="py-3 font-mono text-primary">callback_url</td>
+                                        <td class="py-3">String</td>
+                                        <td class="py-3"><span class="px-2 py-1 bg-slate-100 text-slate-500 text-[10px] font-bold rounded">OPTIONAL</span></td>
+                                        <td class="py-3 text-slate-500">The webhook URL we will POST to upon successful payment.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
 
                         <!-- Code Snippets -->
                         <div class="mb-6">
                             <div class="flex border-b border-slate-200">
                                 <button class="px-4 py-2 text-xs font-bold text-primary border-b-2 border-primary snippet-tab" data-target="curl">cURL</button>
-                                <button class="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 snippet-tab" data-target="php">PHP</button>
                                 <button class="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 snippet-tab" data-target="node">Node.js</button>
                                 <button class="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 snippet-tab" data-target="python">Python</button>
                             </div>
@@ -115,155 +169,193 @@
   -d '{
     "amount": "100.00",
     "order_id": "ORD_20260914_7702",
-    "customer_name": "Raushan Kumar",
-    "callback_url": "https://yourwebsite.com/callback.php"
+    "customer_mobile": "9999999999",
+    "callback_url": "https://yourwebsite.com/webhook"
   }'</pre>
-                            </div>
-                            <div class="bg-slate-900 rounded-b-lg p-4 font-mono text-xs text-blue-300 overflow-x-auto snippet-content hidden" id="snippet-php">
-<pre>&lt;?php
-$curl = curl_init();
-curl_setopt_array($curl, array(
-  CURLOPT_URL =&gt; '{{ request.host_url.rstrip('/') }}/api/create-order',
-  CURLOPT_RETURNTRANSFER =&gt; true,
-  CURLOPT_CUSTOMREQUEST =&gt; 'POST',
-  CURLOPT_POSTFIELDS =&gt; '{"amount":"100.00","order_id":"ORD_20260914_7702"}',
-  CURLOPT_HTTPHEADER =&gt; array(
-    'X-Fam-Key: YOUR_API_KEY',
-    'Content-Type: application/json'
-  ),
-));
-$response = curl_exec($curl);
-curl_close($curl);
-echo $response;
-?&gt;</pre>
                             </div>
                             <div class="bg-slate-900 rounded-b-lg p-4 font-mono text-xs text-blue-300 overflow-x-auto snippet-content hidden" id="snippet-node">
 <pre>const axios = require('axios');
-let data = JSON.stringify({
-  "amount": "100.00",
-  "order_id": "ORD_20260914_7702"
-});
-let config = {
-  method: 'post',
-  maxBodyLength: Infinity,
-  url: '{{ request.host_url.rstrip('/') }}/api/create-order',
-  headers: { 
-    'X-Fam-Key': 'YOUR_API_KEY', 
-    'Content-Type': 'application/json'
-  },
-  data : data
-};
-axios.request(config)
-.then((response) => {
-  console.log(JSON.stringify(response.data));
-})
-.catch((error) => {
-  console.log(error);
-});</pre>
+axios.post('{{ request.host_url.rstrip('/') }}/api/create-order', {
+  amount: "100.00",
+  order_id: "ORD_20260914_7702",
+  callback_url: "https://yourwebsite.com/webhook"
+}, {
+  headers: { 'X-Fam-Key': 'YOUR_API_KEY' }
+}).then(res => console.log(res.data));</pre>
                             </div>
                             <div class="bg-slate-900 rounded-b-lg p-4 font-mono text-xs text-blue-300 overflow-x-auto snippet-content hidden" id="snippet-python">
 <pre>import requests
-import json
-url = "{{ request.host_url.rstrip('/') }}/api/create-order"
-payload = json.dumps({
-  "amount": "100.00",
-  "order_id": "ORD_20260914_7702"
-})
-headers = {
-  'X-Fam-Key': 'YOUR_API_KEY',
-  'Content-Type': 'application/json'
-}
-response = requests.request("POST", url, headers=headers, data=payload)
-print(response.text)</pre>
+res = requests.post(
+    "{{ request.host_url.rstrip('/') }}/api/create-order",
+    json={"amount": "100.00", "order_id": "ORD_20260914_7702"},
+    headers={"X-Fam-Key": "YOUR_API_KEY"}
+)
+print(res.json())</pre>
                             </div>
                         </div>
 
-                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Success Response</h4>
-                        <div class="bg-slate-900 rounded-lg p-4 font-mono text-xs text-blue-300 mb-2 overflow-x-auto">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Response: 201 Created</h4>
+                        <div class="bg-slate-900 rounded-lg p-4 font-mono text-xs text-blue-300 overflow-x-auto">
 <pre>{
   <span class="text-emerald-400">"status"</span>: <span class="text-yellow-300">"success"</span>,
   <span class="text-emerald-400">"message"</span>: <span class="text-yellow-300">"Order created successfully"</span>,
   <span class="text-emerald-400">"data"</span>: {
     <span class="text-emerald-400">"payment_url"</span>: <span class="text-yellow-300">"{{ request.host_url.rstrip('/') }}/pay/FAM12345678"</span>,
-    <span class="text-emerald-400">"order_id"</span>: <span class="text-yellow-300">"ORDER_987654"</span>,
+    <span class="text-emerald-400">"order_id"</span>: <span class="text-yellow-300">"ORD_20260914_7702"</span>,
     <span class="text-emerald-400">"token"</span>: <span class="text-yellow-300">"FAM12345678"</span>,
-    <span class="text-emerald-400">"txn_id"</span>: <span class="text-yellow-300">"FAM12345678"</span>,
-    <span class="text-emerald-400">"amount"</span>: <span class="text-orange-400">499.00</span>,
-    <span class="text-emerald-400">"currency"</span>: <span class="text-yellow-300">"INR"</span>
+    <span class="text-emerald-400">"amount"</span>: <span class="text-orange-400">100.00</span>
   }
 }</pre>
                         </div>
-                        <p class="text-xs text-slate-500">Redirect your user to the `payment_url` to complete the transaction.</p>
                     </div>
+                </div>
 
-                    <!-- Check Status Tab -->
-                    <div class="p-6 border-b border-slate-100">
+                <!-- 4. Check Status -->
+                <div id="check-status" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden scroll-mt-24">
+                    <div class="p-6">
                         <div class="flex items-center gap-3 mb-6">
                             <span class="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-black rounded uppercase tracking-wider">POST</span>
-                            <h2 class="text-lg font-bold text-slate-800">/check-status</h2>
+                            <h2 class="text-lg font-bold text-slate-800">/api/check-status</h2>
                         </div>
                         
-                        <p class="text-sm text-slate-600 mb-6">Retrieves the details and verification status of a transaction using your unique order_id reference.</p>
+                        <p class="text-sm text-slate-600 mb-6">Retrieves the current state of an order. While this endpoint exists, asynchronous webhooks are the preferred source of truth for automated fulfillment.</p>
                         
-                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Request Body (JSON)</h4>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Request Body</h4>
                         <div class="bg-slate-900 rounded-lg p-4 font-mono text-xs text-blue-300 mb-6 overflow-x-auto">
 <pre>{
-  <span class="text-emerald-400">"order_id"</span>: <span class="text-yellow-300">"ORDER_987654"</span> <span class="text-slate-500">// (Required) Your internal order ID</span>
+  <span class="text-emerald-400">"order_id"</span>: <span class="text-yellow-300">"ORD_20260914_7702"</span> <span class="text-slate-500">// Your internal order ID</span>
 }</pre>
                         </div>
 
-                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Success Response</h4>
-                        <div class="bg-slate-900 rounded-lg p-4 font-mono text-xs text-blue-300 mb-2 overflow-x-auto">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Response: 200 OK</h4>
+                        <div class="bg-slate-900 rounded-lg p-4 font-mono text-xs text-blue-300 overflow-x-auto">
 <pre>{
   <span class="text-emerald-400">"status"</span>: <span class="text-yellow-300">"success"</span>,
   <span class="text-emerald-400">"data"</span>: {
-    <span class="text-emerald-400">"order_id"</span>: <span class="text-yellow-300">"ORDER_987654"</span>,
-    <span class="text-emerald-400">"amount"</span>: <span class="text-orange-400">499.00</span>,
+    <span class="text-emerald-400">"order_id"</span>: <span class="text-yellow-300">"ORD_20260914_7702"</span>,
+    <span class="text-emerald-400">"amount"</span>: <span class="text-orange-400">100.00</span>,
     <span class="text-emerald-400">"payment_status"</span>: <span class="text-yellow-300">"success"</span>,
-    <span class="text-emerald-400">"customer_name"</span>: <span class="text-yellow-300">"John Doe"</span>,
     <span class="text-emerald-400">"utr"</span>: <span class="text-yellow-300">"123456789012"</span>,
     <span class="text-emerald-400">"gateway_txn_id"</span>: <span class="text-yellow-300">"FAM12345678"</span>
   }
 }</pre>
                         </div>
                     </div>
-                    
-                    <!-- Webhook Documentation -->
+                </div>
+                
+                <!-- 5. Webhooks -->
+                <div id="webhooks" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden scroll-mt-24">
                     <div class="p-6">
                         <div class="flex items-center gap-3 mb-6">
                             <span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-black rounded uppercase tracking-wider">WEBHOOK</span>
-                            <h2 class="text-lg font-bold text-slate-800">Payment Callbacks</h2>
+                            <h2 class="text-lg font-bold text-slate-800">Cryptographic Webhook Security</h2>
                         </div>
                         
-                        <p class="text-sm text-slate-600 mb-6">When a payment is successfully completed, we will send a POST request to your `callback_url`.</p>
-                        
-                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Security (HMAC Verification)</h4>
-                        <p class="text-sm text-slate-600 mb-4">To verify that the webhook actually came from us, we send a header <code class="bg-slate-100 px-1 py-0.5 rounded text-primary text-xs">X-FamGateway-Signature</code>. Generate an HMAC-SHA256 signature of the raw JSON payload using your Secret API Key, and compare it with our header.</p>
+                        <div class="prose prose-slate prose-sm max-w-none text-slate-600 space-y-4 mb-6">
+                            <p>UPI transactions rely on asynchronous banking switches. Therefore, you must rely on webhooks for finality. Do not fulfill orders based solely on synchronous redirects.</p>
+                            <p>When a payment completes, we transmit a POST request to your <code class="bg-slate-100 px-1 py-0.5 rounded text-primary">callback_url</code>. To prevent forged requests, we cryptographically sign every payload using <strong>HMAC-SHA256</strong>.</p>
+                            <p>The signature is transmitted in the <code class="bg-slate-100 px-1 py-0.5 rounded text-primary font-bold">X-FamGateway-Signature</code> header. You must reconstruct the HMAC hash using your Secret API Key and compare it using a constant-time equality function.</p>
+                        </div>
                         
                         <div class="bg-slate-800 rounded-lg p-4 font-mono text-[11px] text-emerald-400 overflow-x-auto">
 <pre>
-<span class="text-slate-400"># Python Example</span>
+<span class="text-slate-400"># Python Verification Example</span>
 import hmac, hashlib
-signature = hmac.new(
-    api_key.encode(), 
-    raw_payload_body, 
-    hashlib.sha256
-).hexdigest()
 
-if signature == headers.get('X-FamGateway-Signature'):
-    print("Valid Webhook!")
+def verify_webhook(raw_payload_body, header_signature, api_key):
+    expected_signature = hmac.new(
+        api_key.encode(), 
+        raw_payload_body, 
+        hashlib.sha256
+    ).hexdigest()
+    
+    return hmac.compare_digest(expected_signature, header_signature)
 </pre>
                         </div>
                     </div>
                 </div>
-                
+
+                <!-- 6. Errors -->
+                <div id="errors" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden p-6 scroll-mt-24">
+                    <h2 class="text-xl font-bold text-slate-800 mb-4">6. Standardized Error Handling</h2>
+                    <div class="prose prose-slate prose-sm max-w-none text-slate-600 space-y-4 mb-6">
+                        <p>Our API adheres to standard HTTP error reporting syntax, categorizing responses into 2xx for success, 4xx for client faults, and 5xx for server issues.</p>
+                    </div>
+                    
+                    <div class="overflow-x-auto mb-8">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-200">
+                                    <th class="py-2 text-xs font-bold text-slate-500">HTTP Status</th>
+                                    <th class="py-2 text-xs font-bold text-slate-500">Reason Phrase</th>
+                                    <th class="py-2 text-xs font-bold text-slate-500">Application Context</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm text-slate-700">
+                                <tr class="border-b border-slate-100">
+                                    <td class="py-3 font-mono font-bold text-emerald-600">200 / 201</td>
+                                    <td class="py-3">OK / Created</td>
+                                    <td class="py-3 text-slate-500">Successful execution of the API action.</td>
+                                </tr>
+                                <tr class="border-b border-slate-100">
+                                    <td class="py-3 font-mono font-bold text-red-600">400</td>
+                                    <td class="py-3">Bad Request</td>
+                                    <td class="py-3 text-slate-500">Malformed syntax or omission of mandatory parameters.</td>
+                                </tr>
+                                <tr class="border-b border-slate-100">
+                                    <td class="py-3 font-mono font-bold text-red-600">401</td>
+                                    <td class="py-3">Unauthorized</td>
+                                    <td class="py-3 text-slate-500">The API Key is missing, expired, or invalid.</td>
+                                </tr>
+                                <tr class="border-b border-slate-100">
+                                    <td class="py-3 font-mono font-bold text-red-600">429</td>
+                                    <td class="py-3">Too Many Requests</td>
+                                    <td class="py-3 text-slate-500">You have exceeded your allocated API rate limiting threshold.</td>
+                                </tr>
+                                <tr class="border-b border-slate-100">
+                                    <td class="py-3 font-mono font-bold text-orange-600">500 / 502</td>
+                                    <td class="py-3">Server Error</td>
+                                    <td class="py-3 text-slate-500">An unexpected anomaly or invalid response from upstream banking partners.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h3 class="font-bold text-slate-800 text-base mb-3">UPI-Specific Decline Codes</h3>
+                    <p class="text-sm text-slate-600 mb-4">You may encounter these codes when a transaction fails at the NPCI or Issuing Bank level:</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-200">
+                                    <th class="py-2 text-xs font-bold text-slate-500">UPI Error</th>
+                                    <th class="py-2 text-xs font-bold text-slate-500">Description</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm text-slate-700">
+                                <tr class="border-b border-slate-100">
+                                    <td class="py-3 font-mono font-bold text-red-600">U30</td>
+                                    <td class="py-3 text-slate-500">Insufficient Funds in customer's bank account.</td>
+                                </tr>
+                                <tr class="border-b border-slate-100">
+                                    <td class="py-3 font-mono font-bold text-red-600">U16</td>
+                                    <td class="py-3 text-slate-500">Risk Threshold Exceeded (daily limits breached).</td>
+                                </tr>
+                                <tr class="border-b border-slate-100">
+                                    <td class="py-3 font-mono font-bold text-red-600">PIN Error</td>
+                                    <td class="py-3 text-slate-500">User entered an incorrect UPI PIN.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <!-- AI Prompt Section -->
-                <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-6">
+                <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-6 mt-8">
                     <div class="flex items-center gap-3 mb-4">
                         <i class="fa-solid fa-robot text-indigo-600 text-xl"></i>
                         <h2 class="text-lg font-bold text-indigo-900">AI Integration Prompt</h2>
                     </div>
-                    <p class="text-sm text-indigo-700 mb-4">Building on a no-backend / single-file setup? Copy the ready-made prompt below and paste it into your favourite AI code generator (ChatGPT, Claude, etc.).</p>
+                    <p class="text-sm text-indigo-700 mb-4">Building on a no-backend setup? Paste this prompt into ChatGPT to generate your code.</p>
                     <div class="relative">
                         <textarea id="aiPrompt" readonly class="w-full h-48 p-4 bg-white border border-indigo-200 rounded-xl text-xs font-mono text-slate-700 focus:outline-none focus:border-indigo-400 resize-none">
 Mujhe apni website/app me Payment Gateway fully integrate karna hai. Requirements:
@@ -300,17 +392,19 @@ Headers: X-Fam-Key: YOUR_API_KEY
         document.querySelectorAll('.snippet-tab').forEach(tab => {
             tab.addEventListener('click', (e) => {
                 // Remove active classes
-                document.querySelectorAll('.snippet-tab').forEach(t => {
+                const parent = e.target.parentElement;
+                parent.querySelectorAll('.snippet-tab').forEach(t => {
                     t.classList.remove('text-primary', 'border-b-2', 'border-primary');
                     t.classList.add('text-slate-500');
                 });
                 // Hide all content
-                document.querySelectorAll('.snippet-content').forEach(c => c.classList.add('hidden'));
+                const container = parent.parentElement.parentElement;
+                container.querySelectorAll('.snippet-content').forEach(c => c.classList.add('hidden'));
                 
                 // Activate clicked
                 e.target.classList.remove('text-slate-500');
                 e.target.classList.add('text-primary', 'border-b-2', 'border-primary');
-                document.getElementById('snippet-' + e.target.dataset.target).classList.remove('hidden');
+                container.querySelector('#snippet-' + e.target.dataset.target).classList.remove('hidden');
             });
         });
     </script>

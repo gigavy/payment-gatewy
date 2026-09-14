@@ -1,4 +1,6 @@
-{% extends 'base.html' %}
+import os
+
+api_docs_html = """{% extends 'base.html' %}
 
 {% block content %}
 <div class="mb-6">
@@ -63,7 +65,7 @@
     <div class="lg:col-span-3 space-y-8">
         
         <!-- 1. Intro -->
-        <div id="intro" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden p-6 scroll-mt-6">
+        <div id="intro" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden p-6">
             <h2 class="text-xl font-bold text-slate-800 mb-4">1. Introduction & Core Architecture</h2>
             <div class="prose prose-slate prose-sm max-w-none text-slate-600 space-y-4">
                 <p>Welcome to our developer-first REST API. Our architecture is designed to allow you to accept zero-commission UPI payments with absolute enterprise reliability.</p>
@@ -74,7 +76,7 @@
         </div>
 
         <!-- 2. Idempotency -->
-        <div id="idempotency" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden p-6 scroll-mt-6">
+        <div id="idempotency" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden p-6">
             <h2 class="text-xl font-bold text-slate-800 mb-4">2. Distributed Systems Reliability: Idempotency</h2>
             <div class="prose prose-slate prose-sm max-w-none text-slate-600 space-y-4">
                 <p>In the context of financial technology, the public internet is fundamentally unreliable. Connections drop, routing tables update, and timeouts occur. Because HTTP POST requests are not inherently idempotent, a naive client retry after a timeout could result in a duplicate payment.</p>
@@ -83,7 +85,7 @@
         </div>
         
         <!-- 3. Create Order -->
-        <div id="create-order" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden scroll-mt-6">
+        <div id="create-order" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             <div class="p-6">
                 <div class="flex items-center gap-3 mb-6">
                     <span class="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-black rounded uppercase tracking-wider">POST</span>
@@ -188,7 +190,7 @@ print(res.json())</pre>
         </div>
 
         <!-- 4. Check Status -->
-        <div id="check-status" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden scroll-mt-6">
+        <div id="check-status" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             <div class="p-6">
                 <div class="flex items-center gap-3 mb-6">
                     <span class="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-black rounded uppercase tracking-wider">POST</span>
@@ -221,7 +223,7 @@ print(res.json())</pre>
         </div>
         
         <!-- 5. Webhooks -->
-        <div id="webhooks" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden scroll-mt-6">
+        <div id="webhooks" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             <div class="p-6">
                 <div class="flex items-center gap-3 mb-6">
                     <span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-black rounded uppercase tracking-wider">WEBHOOK</span>
@@ -253,7 +255,7 @@ def verify_webhook(raw_payload_body, header_signature, api_key):
         </div>
 
         <!-- 6. Errors -->
-        <div id="errors" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden p-6 scroll-mt-6">
+        <div id="errors" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden p-6">
             <h2 class="text-xl font-bold text-slate-800 mb-4">6. Standardized Error Handling</h2>
             <div class="prose prose-slate prose-sm max-w-none text-slate-600 space-y-4 mb-6">
                 <p>Our API adheres to standard HTTP error reporting syntax, categorizing responses into 2xx for success, 4xx for client faults, and 5xx for server issues.</p>
@@ -389,7 +391,7 @@ Headers: X-Fam-Key: {{ user_info.api_key if user_info and user_info.api_key else
                 t.classList.add('text-slate-500');
             });
             // Hide all content
-            const container = parent.parentElement.parentElement;
+            const container = parent.parentElement;
             container.querySelectorAll('.snippet-content').forEach(c => c.classList.add('hidden'));
             
             // Activate clicked
@@ -412,7 +414,59 @@ Headers: X-Fam-Key: {{ user_info.api_key if user_info and user_info.api_key else
         window.history.replaceState({}, document.title, window.location.pathname);
     }
 </script>
-<style>
-    html { scroll-behavior: smooth; }
-</style>
-{% endblock %}
+{% endblock %}"""
+
+with open("templates/api_docs.html", "w", encoding="utf-8") as f:
+    f.write(api_docs_html)
+
+# Now public version
+public_api_docs_html = api_docs_html.replace("{% extends 'base.html' %}\n\n{% block content %}", """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Documentation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: { 
+                    colors: { primary: '#4f46e5' }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        html { scroll-behavior: smooth; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen pb-12">
+    <!-- Navbar -->
+    <nav class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
+        <a href="/" class="flex items-center gap-2 text-slate-800 font-bold hover:text-primary transition-colors">
+            <i class="fa-solid fa-arrow-left"></i> Back to Home
+        </a>
+        <div class="flex items-center gap-4">
+            <a href="/login" class="text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors">Log In</a>
+            <a href="/register" class="text-sm font-bold bg-primary text-white px-4 py-2 rounded-lg shadow-sm hover:bg-indigo-600 transition-colors">Get API Key</a>
+        </div>
+    </nav>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+""").replace("{% endblock %}", "</div></body></html>")
+
+# Remove jinja tags inside public version
+public_api_docs_html = public_api_docs_html.replace(
+    "{{ user_info.api_key if user_info and user_info.api_key else 'Please connect account to generate key' }}", 
+    "Login to generate key"
+)
+public_api_docs_html = public_api_docs_html.replace(
+    "{{ user_info.api_key if user_info and user_info.api_key else 'YOUR_API_KEY' }}", 
+    "YOUR_API_KEY"
+)
+
+with open("templates/public_api_docs.html", "w", encoding="utf-8") as f:
+    f.write(public_api_docs_html)
