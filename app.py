@@ -538,7 +538,7 @@ def check_plan_expiry():
                 if plan_expiry_str:
                     try:
                         expiry_date = datetime.fromisoformat(plan_expiry_str)
-                        if datetime.now() > expiry_date + timedelta(days=3):
+                        if datetime.now() > expiry_date:
                             c.execute("UPDATE users SET plan_name='Free', plan_expiry=NULL WHERE user_id=%s", (session['user_id'],))
                             conn.commit()
                             plan_name = 'Free'
@@ -1811,7 +1811,7 @@ def generate_link():
     
     if c.rowcount == 0:
         conn.close()
-        return redirect(url_for('payment_links', error='Your plan limit reached. Please upgrade to continue creating links.'))
+        return redirect(url_for('payment_links', error='Your payment link limit reached and will renew after 7 days.'))
     
     c.execute('''INSERT INTO transactions (txn_id, user_id, amount, status, created_at, expires_at, customer_email)
                  VALUES (%s, %s, %s, 'pending', %s, %s, %s)''', 
@@ -1919,7 +1919,7 @@ def api_create_order():
     
     if c.rowcount == 0:
         conn.close()
-        return jsonify({"status": "error", "message": "Plan limit reached. Please upgrade to continue."}), 403
+        return jsonify({"status": "error", "message": "Your payment link limit reached and will renew after 7 days."}), 403
         
     c.execute('''INSERT INTO transactions (txn_id, user_id, amount, status, created_at, expires_at, merchant_order_id, customer_name, callback_url)
                  VALUES (%s, %s, %s, 'pending', %s, %s, %s, %s, %s)''', 
@@ -2640,7 +2640,7 @@ def monitor_gmails():
                                         if len(parts) >= 4:
                                             s_plan = parts[2]
                                             s_uid = parts[3]
-                                            plan_expiry = (datetime.now() + timedelta(days=30)).isoformat()
+                                            plan_expiry = (datetime.now() + timedelta(days=7)).isoformat()
                                             
                                             c_check.execute("SELECT plan_name FROM users WHERE user_id=%s", (s_uid,))
                                             curr_row = c_check.fetchone()
