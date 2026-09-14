@@ -2549,11 +2549,13 @@ def monitor_gmails():
                                 row = c_db.fetchone()
                                 txn_completed_now = False
                                 
+                                now_cmp = str(datetime.now())[:19]
+                                
                                 if row:
                                     t_id, t_status, t_cb, t_m_id, t_exp = row
                                     print(f"[IMAP] Found exact UTR match for Txn: {t_id}", flush=True)
                                     # Hard Gate: Expire order if time crossed
-                                    if t_exp and now_str > t_exp:
+                                    if t_exp and now_cmp > str(t_exp)[:19].replace('T', ' '):
                                         print(f"[IMAP] Hard reject: Transaction expired", flush=True)
                                         c_db.execute("UPDATE transactions SET status='expired' WHERE txn_id=%s", (t_id,))
                                         conn_db.commit()
@@ -2576,7 +2578,7 @@ def monitor_gmails():
                                     if pending_txn:
                                         p_id, p_cb, p_m_id, p_exp = pending_txn
                                         print(f"[IMAP] Found pending transaction {p_id} matching amount!", flush=True)
-                                        if p_exp and now_str > p_exp:
+                                        if p_exp and now_cmp > str(p_exp)[:19].replace('T', ' '):
                                             print(f"[IMAP] Hard reject: Transaction expired", flush=True)
                                             c_db.execute("UPDATE transactions SET status='expired' WHERE txn_id=%s", (p_id,))
                                             conn_db.commit()
