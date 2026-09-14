@@ -2486,9 +2486,14 @@ def monitor_gmails():
 
                     if status == 'OK' and messages[0]:
                         msg_nums = messages[0].split()
-                        print(f"[IMAP] Found {len(msg_nums)} UNREAD emails for user {user_id}")
+                        print(f"[IMAP] Found {len(msg_nums)} UNREAD emails for user {user_id}", flush=True)
                         
-                        for num in msg_nums:
+                        # Process the 10 newest unread emails first to ensure instant payment verification 
+                        # even if the inbox has hundreds of old unread emails.
+                        batch = msg_nums[-10:]
+                        batch.reverse()
+                        
+                        for num in batch:
                             status, data = mail.fetch(num, '(RFC822)')
                             if status != 'OK': continue
 
@@ -2535,7 +2540,14 @@ def monitor_gmails():
                             utr_match = re.search(r'(?:UPI\s*Ref(?:erence)?\s*(?:No\.?)?|UTR|Txn\s*ID|Transaction\s*ID|RRN|Order\s*ID|Reference\s*ID|Ref\s*No\.?)\s*[:.-]?\s*([A-Za-z0-9]{8,30})', text, re.IGNORECASE)
 
                             if amt_match:
-                                amount = float(amt_match.group(1).replace(',', ''))
+                                try:
+                                    amount_str = amt_match.group(1).replace(',', '')
+                                    if not amount_str.strip(): raise ValueError("Empty amount")
+                                    amount = float(amount_str)
+                                except ValueError:
+                                    print(f"[IMAP] False positive amount match ignored. Raw: {text[:100]}", flush=True)
+                                    continue
+
                                 utr = utr_match.group(1) if utr_match else f"AUTO_{int(time.time())}"
                                 print(f"[IMAP] SUCCESS - Extracted Amount: {amount} | UTR: {utr}", flush=True)
                                 add_sys_log(user_id, f"Parsed Payment: ₹{amount} (UTR: {utr})")
