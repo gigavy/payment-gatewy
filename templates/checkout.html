@@ -302,7 +302,14 @@
             } catch(e) {}
             const cb = document.getElementById('callback_url').value;
             if (cb && cb !== 'None' && cb.trim() !== '') {
-                window.location.href = cb;
+                try {
+                    const url = new URL(cb);
+                    url.searchParams.set('status', 'failed');
+                    url.searchParams.set('txn_id', txnId);
+                    window.location.href = url.toString();
+                } catch(e) {
+                    window.location.href = cb;
+                }
             } else {
                 window.location.href = '/';
             }
@@ -331,7 +338,22 @@
                     const callbackUrl = document.getElementById('callback_url').value;
                     if (callbackUrl && callbackUrl !== 'None' && callbackUrl !== '') {
                         setTimeout(() => {
-                            window.location.href = callbackUrl;
+                            try {
+                                const url = new URL(callbackUrl);
+                                url.searchParams.set('status', 'success');
+                                url.searchParams.set('txn_id', txnId);
+                                url.searchParams.set('amount', '{{ amount }}');
+                                url.searchParams.set('utr', data.data.utr || 'Auto-Verified');
+                                
+                                // Since we don't have merchant_order_id in JS context directly, 
+                                // we'll just pass txn_id as order_id if not present, but merchants 
+                                // should use /api/check-status to get the full details anyway.
+                                url.searchParams.set('order_id', txnId); 
+                                
+                                window.location.href = url.toString();
+                            } catch(e) {
+                                window.location.href = callbackUrl; // Fallback to raw URL if parsing fails
+                            }
                         }, 2500);
                     }
                 }

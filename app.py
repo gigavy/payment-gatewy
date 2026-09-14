@@ -384,7 +384,9 @@ def init_db():
         ('expires_at', "TIMESTAMP"),
         ('customer_email', "TEXT"),
         ('merchant_order_id', "TEXT"),
-        ('customer_name', "TEXT")
+        ('customer_name', "TEXT"),
+        ('customer_mobile', "TEXT"),
+        ('description', "TEXT")
     ]
     for col, col_def in txn_migrations:
         if col not in existing_txn_cols:
@@ -1897,6 +1899,8 @@ def api_create_order():
     merchant_order_id = data.get('order_id')
     customer_name = data.get('customer_name')
     callback_url = data.get('callback_url')
+    customer_mobile = data.get('customer_mobile')
+    description = data.get('description')
     
     if not amount_raw:
         return jsonify({"status": "error", "message": "Missing amount"}), 400
@@ -1933,9 +1937,9 @@ def api_create_order():
         conn.close()
         return jsonify({"status": "error", "message": "Your payment link limit reached and will renew after 7 days."}), 403
         
-    c.execute('''INSERT INTO transactions (txn_id, user_id, amount, status, created_at, expires_at, merchant_order_id, customer_name, callback_url)
-                 VALUES (%s, %s, %s, 'pending', %s, %s, %s, %s, %s)''', 
-              (txn_id, user_id, amount, now.isoformat(), expires.isoformat(), merchant_order_id, customer_name, callback_url))
+    c.execute('''INSERT INTO transactions (txn_id, user_id, amount, status, created_at, expires_at, merchant_order_id, customer_name, callback_url, customer_mobile, description)
+                 VALUES (%s, %s, %s, 'pending', %s, %s, %s, %s, %s, %s, %s)''', 
+              (txn_id, user_id, amount, now.isoformat(), expires.isoformat(), merchant_order_id, customer_name, callback_url, customer_mobile, description))
               
     c.execute("SELECT links_used, plan_name FROM users WHERE user_id = %s", (user_id,))
     usage_row = c.fetchone()
@@ -1952,10 +1956,19 @@ def api_create_order():
     
     return jsonify({
         "status": "success",
-        "payment_url": payment_url,
-        "txn_id": txn_id,
-        "expires_at": expires.isoformat()
-    })
+        "message": "Order created successfully",
+        "data": {
+            "payment_url": payment_url,
+            "order_id": merchant_order_id,
+            "token": txn_id,
+            "txn_id": txn_id,
+            "amount": amount,
+            "currency": "INR",
+            "customer_name": customer_name,
+            "expires_at": expires.strftime("%Y-%m-%d %H:%M:%S"),
+            "created_at": now.strftime("%Y-%m-%d %H:%M:%S")
+        }
+    }), 201
 
 @app.route('/pay/<txn_id>', methods=['GET'])
 def checkout_page_by_id(txn_id):
@@ -2163,6 +2176,78 @@ def submit_utr():
     conn.commit()
     conn.close()
     return jsonify({'status': 'success'})
+
+@app.route('/api/check-status', methods=['POST'])
+def api_check_status():
+    api_key = request.headers.get('X-Fam-Key') or request.headers.get('Authorization') or (request.json.get('api_key') if request.is_json else None)
+    if api_key and api_key.startswith('Bearer '):
+        api_key = api_key[7:].strip()
+    if not api_key:
+        return jsonify({"status": "error", "message": "Missing API Key header (X-Fam-Key)"}), 401
+
+    data = request.json or {}
+    order_id = data.get('order_id')
+    txn_id = data.get('txn_id')
+
+    if not order_id and not txn_id:
+        return jsonify({"status": "error", "message": "Missing order_id or txn_id"}), 400
+
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
+    
+    key_hash = hashlib.sha256(api_key.strip().encode('utf-8')).hexdigest()
+    c.execute("SELECT user_id FROM users WHERE live_api_key_hash=%s OR test_api_key_hash=%s OR api_key=%s", (key_hash, key_hash, api_key))
+    user = c.fetchone()
+    
+    if not user:
+        conn.close()
+        return jsonify({"status": "error", "message": "Invalid API Key"}), 401
+
+    user_id = user[0]
+
+    if order_id:
+        c.execute("SELECT status, amount, utr, paid_at, merchant_order_id, customer_name, customer_mobile, created_at, expires_at, callback_url, txn_id FROM transactions WHERE merchant_order_id = %s AND user_id = %s ORDER BY created_at DESC LIMIT 1", (order_id, user_id))
+    else:
+        c.execute("SELECT status, amount, utr, paid_at, merchant_order_id, customer_name, customer_mobile, created_at, expires_at, callback_url, txn_id FROM transactions WHERE txn_id = %s AND user_id = %s", (txn_id, user_id))
+
+    row = c.fetchone()
+    conn.close()
+
+    if not row:
+        return jsonify({"status": "error", "message": "Transaction not found"}), 404
+
+    status, amount, utr, paid_at, merchant_order_id, customer_name, customer_mobile, created_at, expires_at, callback_url, found_txn_id = row
+    
+    # Safely format dates
+    try:
+        created_at_str = created_at.strftime("%Y-%m-%d %H:%M:%S") if hasattr(created_at, 'strftime') else (created_at[:19].replace('T', ' ') if created_at else "")
+        expires_at_str = expires_at.strftime("%Y-%m-%d %H:%M:%S") if hasattr(expires_at, 'strftime') else (expires_at[:19].replace('T', ' ') if expires_at else "")
+    except:
+        created_at_str = str(created_at) if created_at else ""
+        expires_at_str = str(expires_at) if expires_at else ""
+
+    payment_url = f"{request.host_url.rstrip('/')}/pay/{found_txn_id}"
+
+    return jsonify({
+        "status": "success",
+        "data": {
+            "order_id": merchant_order_id or found_txn_id,
+            "amount": amount,
+            "currency": "INR",
+            "payment_status": status,
+            "customer_name": customer_name or "",
+            "customer_mobile": customer_mobile or "",
+            "utr": utr if utr else "",
+            "payment_method": "UPI QR",
+            "provider": "paytm",
+            "gateway_txn_id": found_txn_id,
+            "paid_at": paid_at if paid_at else "",
+            "payment_url": payment_url,
+            "callback_url": callback_url or "",
+            "expires_at": expires_at_str,
+            "created_at": created_at_str
+        }
+    }), 200
 
 @app.route('/api/verify', methods=['GET'])
 def verify_api():
