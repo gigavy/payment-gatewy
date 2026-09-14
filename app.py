@@ -2627,6 +2627,9 @@ def monitor_gmails():
                                     
                                     if completed_txn[2]:
                                         threading.Thread(target=send_webhook, args=(user_id, completed_txn[2], completed_txn[0], completed_txn[3], amount, utr)).start()
+                            else:
+                                print(f"[IMAP] FAILED TO EXTRACT AMOUNT. Raw email: {text[:200]}")
+                                add_sys_log(user_id, f"Regex failed! Unrecognized Email format: {text[:100]}...")
                                 
 
                                     
