@@ -1980,6 +1980,29 @@ def checkout_page_by_id(txn_id):
         </body>
         </html>
         """
+        
+    is_time_expired = False
+    if status == 'pending' and expires_at:
+        now_cmp = str(datetime.now())[:19]
+        if now_cmp > str(expires_at)[:19].replace('T', ' '):
+            is_time_expired = True
+
+    if status in ['expired', 'disabled', 'failed', 'cancelled'] or is_time_expired:
+        return f"""
+        <html>
+        <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Link Expired</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; background-color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px;">
+            <div style="background-color: white; padding: 40px 20px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; max-width: 400px; width: 100%;">
+                <div style="background-color: #fef2f2; color: #ef4444; width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 40px; margin: 0 auto 24px auto;">❌</div>
+                <h2 style="color: #0f172a; margin: 0 0 12px 0; font-size: 24px;">Link Expired or Disabled</h2>
+                <p style="color: #64748b; margin: 0; line-height: 1.5; font-size: 15px;">This payment link is no longer active. Please request a new payment link from the merchant.</p>
+            </div>
+        </body>
+        </html>
+        """
     
     if user_id == 0:
         upi_id = get_sys_setting('admin_upi_id', '')
