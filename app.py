@@ -1169,6 +1169,25 @@ def save_account():
         
     return jsonify({'status': 'error', 'message': 'All fields are required.'}) if is_ajax else redirect(url_for('dashboard'))
 
+@app.route('/disconnect_account', methods=['POST'])
+@login_required
+def disconnect_account():
+    user_id = session['user_id']
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor()
+    c.execute("UPDATE users SET gmail=NULL, app_pass=NULL, upi_id=NULL WHERE user_id=%s", (user_id,))
+    conn.commit()
+    conn.close()
+    
+    # Also clear from active IMAP connections
+    if user_id in imap_connections:
+        try:
+            imap_connections[user_id].logout()
+        except: pass
+        del imap_connections[user_id]
+        
+    return redirect('/connect?success=Account+disconnected+successfully')
+
 
 @app.route('/preview_checkout')
 @login_required

@@ -129,8 +129,17 @@
                         <span>Secure & Connect Backend</span>
                         <i class="fa-solid fa-lock text-xs"></i>
                     </button>
+                    {% if user_info and user_info.gmail %}
+                    <button type="button" onclick="document.getElementById('disconnectForm').submit();" class="w-full sm:w-auto bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 px-4 sm:px-8 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md shadow-red-200">
+                        <span>Disconnect</span>
+                        <i class="fa-solid fa-power-off text-xs"></i>
+                    </button>
+                    {% endif %}
                 </div>
             </form>
+            {% if user_info and user_info.gmail %}
+            <form id="disconnectForm" action="/disconnect_account" method="POST" class="hidden"></form>
+            {% endif %}
         </div>
     </div>
 </div>
