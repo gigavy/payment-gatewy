@@ -2790,10 +2790,11 @@ def monitor_gmails():
 
 @app.route('/api_docs')
 def api_docs():
-    user_info = None
     if 'user_id' in session:
         user_info = get_user(session['user_id'])
-    return render_template('api_docs.html', user_info=user_info)
+        return render_template('api_docs.html', user_info=user_info)
+    else:
+        return render_template('public_api_docs.html')
 
 @app.route('/regenerate_key', methods=['POST'])
 @login_required
