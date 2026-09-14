@@ -22,7 +22,7 @@
                 <i class="fa-solid fa-indian-rupee-sign text-sm"></i>
             </div>
         </div>
-        <div class="text-3xl font-black relative z-10">?{{ "{:,.2f}".format(stats.total_revenue) }}</div>
+        <div class="text-xl sm:text-3xl font-black relative z-10">?{{ "{:,.2f}".format(stats.total_revenue) }}</div>
     </div>
 
     <!-- Users -->
@@ -33,7 +33,7 @@
                 <i class="fa-solid fa-users text-sm"></i>
             </div>
         </div>
-        <div class="text-3xl font-black text-slate-800">{{ "{:,}".format(stats.total_users) }}</div>
+        <div class="text-xl sm:text-3xl font-black text-slate-800">{{ "{:,}".format(stats.total_users) }}</div>
     </div>
 
     <!-- Orders -->
@@ -44,7 +44,7 @@
                 <i class="fa-solid fa-cart-shopping text-sm"></i>
             </div>
         </div>
-        <div class="text-3xl font-black text-slate-800">{{ "{:,}".format(stats.total_orders) }}</div>
+        <div class="text-xl sm:text-3xl font-black text-slate-800">{{ "{:,}".format(stats.total_orders) }}</div>
     </div>
 
     <!-- Successful -->
@@ -55,7 +55,7 @@
                 <i class="fa-solid fa-check text-sm"></i>
             </div>
         </div>
-        <div class="text-3xl font-black text-slate-800">{{ "{:,}".format(stats.successful) }}</div>
+        <div class="text-xl sm:text-3xl font-black text-slate-800">{{ "{:,}".format(stats.successful) }}</div>
     </div>
 
     <!-- Pending -->
@@ -66,7 +66,7 @@
                 <i class="fa-regular fa-clock text-sm"></i>
             </div>
         </div>
-        <div class="text-3xl font-black text-slate-800">{{ "{:,}".format(stats.pending) }}</div>
+        <div class="text-xl sm:text-3xl font-black text-slate-800">{{ "{:,}".format(stats.pending) }}</div>
     </div>
 
     <!-- Failed/Expired -->
@@ -77,7 +77,7 @@
                 <i class="fa-solid fa-xmark text-sm"></i>
             </div>
         </div>
-        <div class="text-3xl font-black text-slate-800">{{ "{:,}".format(stats.failed) }}</div>
+        <div class="text-xl sm:text-3xl font-black text-slate-800">{{ "{:,}".format(stats.failed) }}</div>
     </div>
 </div>
 

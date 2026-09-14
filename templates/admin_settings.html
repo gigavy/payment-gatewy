@@ -69,10 +69,22 @@
             <h3 class="text-sm font-bold text-slate-800 mb-4"><i class="fa-brands fa-youtube text-red-600 mr-2"></i> Landing Page Settings</h3>
             
             <div class="mb-4">
-                <label class="block text-xs font-bold text-slate-700 mb-1">YouTube Video URL (Embed Link)</label>
-                <input type="text" name="youtube_link" value="{{ yt_link }}" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm" placeholder="e.g., https://www.youtube.com/embed/dQw4w9WgXcQ">
-                <p class="text-[10px] text-slate-400 mt-1">This video will be displayed on the main landing page.</p>
+                <label class="block text-xs font-bold text-slate-700 mb-1">YouTube Video URL</label>
+                <input type="text" name="youtube_link" value="{{ yt_link }}" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm" placeholder="e.g., https://www.youtube.com/watch?v=dQw4w9WgXcQ or https://youtu.be/dQw4w9WgXcQ">
+                <p class="text-[10px] text-slate-400 mt-1">Paste any YouTube link. It will auto-convert to embed format. Displays on Landing Page & Dashboard Quick Setup.</p>
             </div>
+            
+            {% if yt_link %}
+            <div class="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                <div class="flex items-center gap-2 mb-3">
+                    <i class="fa-solid fa-circle-check text-emerald-500"></i>
+                    <span class="text-xs font-bold text-emerald-700">Video is set and active</span>
+                </div>
+                <div class="rounded-lg overflow-hidden border border-slate-200 bg-black" style="position:relative; padding-bottom:56.25%; height:0;">
+                    <iframe style="position:absolute; top:0; left:0; width:100%; height:100%;" src="{{ yt_link }}" title="YouTube video preview" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                </div>
+            </div>
+            {% endif %}
             
             <div class="mb-6">
                 <label class="block text-xs font-bold text-slate-700 mb-1">Support WhatsApp Number (With Country Code)</label>
@@ -171,7 +183,7 @@
         
         <form action="/admin/settings" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">Basic Plan (₹)</label>
                     <input type="number" name="plan_price_Basic" value="{{ price_basic }}" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm" min="1">

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Checkout | {{ display_name }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -22,7 +22,7 @@
         .success-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 50;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            opacity: 0; pointer-events: none; transition: opacity 0.3s;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s; overflow-y: auto;
         }
         .success-overlay.active { opacity: 1; pointer-events: auto; }
         
@@ -116,7 +116,7 @@
             {% endif %}
             <p class="text-sm font-medium text-muted mb-6">Paying for Order #{{ txn_id[-6:] }}</p>
             
-            <h1 class="text-[2.75rem] font-black text-dark mb-6 leading-none">₹{{ amount }}</h1>
+            <h1 class="text-3xl sm:text-[2.75rem] font-black text-dark mb-6 leading-none">₹{{ amount }}</h1>
             
             <!-- Timer above QR for clean theme, else bottom -->
             {% if theme == 'clean' %}

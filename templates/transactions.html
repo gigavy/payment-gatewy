@@ -1,4 +1,4 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 
 {% block content %}
 <div class="mb-6">
@@ -133,14 +133,14 @@
     <!-- Table content -->
     <div class="overflow-x-auto min-h-[300px]">
         {% if txns %}
-        <table class="w-full text-left border-collapse">
+        <table class="w-full min-w-[600px] text-left border-collapse">
             <thead>
                 <tr class="bg-white text-[11px] uppercase tracking-wider text-slate-400 font-bold border-b border-slate-100">
-                    <th class="py-3 px-6">Order ID</th>
-                    <th class="py-3 px-6">Amount</th>
-                    <th class="py-3 px-6">Method</th>
-                    <th class="py-3 px-6">Status</th>
-                    <th class="py-3 px-6">Date</th>
+                    <th class="py-3 px-6 whitespace-nowrap">Order ID</th>
+                    <th class="py-3 px-6 whitespace-nowrap">Amount</th>
+                    <th class="py-3 px-6 whitespace-nowrap">Method</th>
+                    <th class="py-3 px-6 whitespace-nowrap">Status</th>
+                    <th class="py-3 px-6 whitespace-nowrap">Date</th>
                 </tr>
             </thead>
             <tbody class="text-sm font-medium text-slate-700">
