@@ -65,13 +65,23 @@
                 <input type="password" name="google_client_secret" value="{{ g_client_secret }}" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm">
                 <p class="text-[10px] text-slate-400 mt-1">Get this from Google Cloud Console. Set Redirect URI to <code class="bg-slate-100 text-slate-800 px-1 rounded">https://your-domain.onrender.com/login/google/callback</code></p>
             </div>
-            <hr class="my-6 border-slate-200">
-            <h3 class="text-sm font-bold text-slate-800 mb-4"><i class="fa-brands fa-youtube text-red-600 mr-2"></i> Landing Page Settings</h3>
+            <button type="submit" class="w-full bg-primary hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-all shadow-md shadow-indigo-500/30 text-sm flex items-center justify-center gap-2">
+                <i class="fa-solid fa-save"></i> Save Settings
+            </button>
+        </form>
+    </div>
+
+    <!-- Landing Page Settings - Separate Card -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <h3 class="text-base font-bold text-slate-800 mb-6"><i class="fa-brands fa-youtube text-red-600 mr-2"></i> Landing Page Settings</h3>
+        
+        <form action="/admin/settings" method="POST">
+            <input type="hidden" name="maintenance_mode" value="{{ maintenance_mode }}">
             
             <div class="mb-4">
                 <label class="block text-xs font-bold text-slate-700 mb-1">YouTube Video URL</label>
-                <input type="text" name="youtube_link" value="{{ yt_link }}" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm" placeholder="e.g., https://www.youtube.com/watch?v=dQw4w9WgXcQ or https://youtu.be/dQw4w9WgXcQ">
-                <p class="text-[10px] text-slate-400 mt-1">Paste any YouTube link. It will auto-convert to embed format. Displays on Landing Page & Dashboard Quick Setup.</p>
+                <input type="text" name="youtube_link" value="{{ yt_link }}" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm" placeholder="e.g., https://www.youtube.com/watch?v=dQw4w9WgXcQ">
+                <p class="text-[10px] text-slate-400 mt-1">Paste any YouTube link. Auto-converts to embed. Shows on Landing Page & Dashboard.</p>
             </div>
             
             {% if yt_link %}
@@ -86,17 +96,22 @@
             </div>
             {% endif %}
             
+            <hr class="my-6 border-slate-200">
+            
             <div class="mb-6">
-                <label class="block text-xs font-bold text-slate-700 mb-1">Support WhatsApp Number (With Country Code)</label>
+                <label class="block text-xs font-bold text-slate-700 mb-1"><i class="fa-brands fa-whatsapp text-green-500 mr-1"></i> Support WhatsApp Number (With Country Code)</label>
                 <input type="text" name="support_whatsapp" value="{{ wa_number }}" class="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm" placeholder="e.g., 919876543210">
-                <p class="text-[10px] text-slate-400 mt-1">This will be used for the WhatsApp Support button on the landing page.</p>
+                <p class="text-[10px] text-slate-400 mt-1">WhatsApp Support button on the landing page.</p>
             </div>
             
-            <button type="submit" class="w-full bg-primary hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-all shadow-md shadow-indigo-500/30 text-sm flex items-center justify-center gap-2">
-                <i class="fa-solid fa-save"></i> Save Settings
+            <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-all shadow-md shadow-red-500/30 text-sm flex items-center justify-center gap-2">
+                <i class="fa-solid fa-save"></i> Save Landing Page Settings
             </button>
         </form>
     </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
 
     <!-- Platform Payment & Subscription Settings -->
     <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
