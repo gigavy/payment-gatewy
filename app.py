@@ -2584,54 +2584,55 @@ def monitor_gmails():
                                         threading.Thread(target=send_webhook, args=(user_id, completed_txn[2], completed_txn[0], completed_txn[3], amount, utr)).start()
                                 
                                 # === SUBSCRIPTION ORDER MATCHING ===
-                                # Check if this payment matches a pending subscription order
-                                try:
-                                    conn_sub = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
-                                    c_sub = conn_sub.cursor(cursor_factory=DictCursor)
-                                    sub_matched = False
-                                    
-                                    # First try UTR match
-                                    c_sub.execute("SELECT order_id, user_id, plan_name, amount, status, expires_at FROM subscription_orders WHERE utr=%s AND status='pending'", (utr,))
-                                    sub_row = c_sub.fetchone()
-                                    
-                                    if not sub_row:
-                                        # Fallback: amount match for pending orders without UTR
-                                        c_sub.execute("""SELECT order_id, user_id, plan_name, amount, status, expires_at 
-                                                        FROM subscription_orders 
-                                                        WHERE status='pending' AND ABS(amount - %s) < 0.01 
-                                                          AND (utr IS NULL OR utr='')
-                                                        ORDER BY created_at DESC LIMIT 1""", (amount,))
+                                # Only check subscription orders for emails arriving in the Admin's payment Gmail (user_id 0)
+                                if user_id == 0:
+                                    try:
+                                        conn_sub = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+                                        c_sub = conn_sub.cursor(cursor_factory=DictCursor)
+                                        sub_matched = False
+                                        
+                                        # First try UTR match
+                                        c_sub.execute("SELECT order_id, user_id, plan_name, amount, status, expires_at FROM subscription_orders WHERE utr=%s AND status='pending'", (utr,))
                                         sub_row = c_sub.fetchone()
-                                    
-                                    if sub_row:
-                                        s_order_id, s_user_id, s_plan, s_amt, s_status, s_exp = sub_row
-                                        now_sub = datetime.now().isoformat()
                                         
-                                        # Check expiry
-                                        expired = False
-                                        try:
-                                            if s_exp and now_sub > str(s_exp):
-                                                c_sub.execute("UPDATE subscription_orders SET status='expired' WHERE order_id=%s", (s_order_id,))
+                                        if not sub_row:
+                                            # Fallback: amount match for pending orders without UTR
+                                            c_sub.execute("""SELECT order_id, user_id, plan_name, amount, status, expires_at 
+                                                            FROM subscription_orders 
+                                                            WHERE status='pending' AND ABS(amount - %s) < 0.01 
+                                                              AND (utr IS NULL OR utr='')
+                                                            ORDER BY created_at DESC LIMIT 1""", (amount,))
+                                            sub_row = c_sub.fetchone()
+                                        
+                                        if sub_row:
+                                            s_order_id, s_user_id, s_plan, s_amt, s_status, s_exp = sub_row
+                                            now_sub = datetime.now().isoformat()
+                                            
+                                            # Check expiry
+                                            expired = False
+                                            try:
+                                                if s_exp and now_sub > str(s_exp):
+                                                    c_sub.execute("UPDATE subscription_orders SET status='expired' WHERE order_id=%s", (s_order_id,))
+                                                    conn_sub.commit()
+                                                    expired = True
+                                            except:
+                                                pass
+                                            
+                                            if not expired:
+                                                # Mark subscription order as completed
+                                                c_sub.execute("UPDATE subscription_orders SET status='completed', utr=%s, paid_at=%s WHERE order_id=%s", (utr, now_sub, s_order_id))
+                                                
+                                                # Upgrade the user's plan!
+                                                plan_expiry = (datetime.now() + timedelta(days=30)).isoformat()
+                                                c_sub.execute("UPDATE users SET plan_name=%s, plan_expiry=%s, links_used=0 WHERE user_id=%s", (s_plan, plan_expiry, s_user_id))
                                                 conn_sub.commit()
-                                                expired = True
-                                        except:
-                                            pass
+                                                
+                                                add_sys_log(s_user_id, f"Subscription VERIFIED! Upgraded to {s_plan} plan (Order: {s_order_id}, UTR: {utr})")
+                                                sub_matched = True
                                         
-                                        if not expired:
-                                            # Mark subscription order as completed
-                                            c_sub.execute("UPDATE subscription_orders SET status='completed', utr=%s, paid_at=%s WHERE order_id=%s", (utr, now_sub, s_order_id))
-                                            
-                                            # Upgrade the user's plan!
-                                            plan_expiry = (datetime.now() + timedelta(days=30)).isoformat()
-                                            c_sub.execute("UPDATE users SET plan_name=%s, plan_expiry=%s, links_used=0 WHERE user_id=%s", (s_plan, plan_expiry, s_user_id))
-                                            conn_sub.commit()
-                                            
-                                            add_sys_log(s_user_id, f"Subscription VERIFIED! Upgraded to {s_plan} plan (Order: {s_order_id}, UTR: {utr})")
-                                            sub_matched = True
-                                    
-                                    conn_sub.close()
-                                except Exception as sub_err:
-                                    print(f"Subscription match error: {sub_err}")
+                                        conn_sub.close()
+                                    except Exception as sub_err:
+                                        print(f"Subscription match error: {sub_err}")
                                     
                 except Exception as e:
                     # If any error (e.g. connection drop), remove from persistent dict to force reconnect next loop
@@ -2807,9 +2808,11 @@ def subscription_checkout(order_id):
         return redirect(url_for('plans', error='This order has expired. Please try again.'))
     
     # Check expiry
+    remaining_seconds = 900
     try:
         exp = datetime.fromisoformat(str(order[6]))
-        if datetime.now() > exp:
+        remaining_seconds = int((exp - datetime.now()).total_seconds())
+        if remaining_seconds <= 0:
             conn2 = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
             c2 = conn2.cursor(cursor_factory=DictCursor)
             c2.execute("UPDATE subscription_orders SET status='expired' WHERE order_id=%s", (order_id,))
@@ -2830,10 +2833,19 @@ def subscription_checkout(order_id):
                            order_id=order[0],
                            plan_name=order[2],
                            amount=order[3],
-                           expires_at=str(order[6]),
+                           remaining_seconds=remaining_seconds,
                            upi_link=upi_link,
                            admin_upi=admin_upi,
                            admin_name=admin_name)
+
+@app.route('/admin/settings/disconnect_payment', methods=['POST'])
+@admin_required
+def admin_disconnect_payment():
+    set_sys_setting('admin_upi_id', '')
+    set_sys_setting('admin_upi_display_name', '')
+    set_sys_setting('admin_payment_gmail', '')
+    set_sys_setting('admin_payment_app_pass', '')
+    return redirect('/admin/settings?success=Payment+account+disconnected')
 
 @app.route('/api/subscription/status/<order_id>')
 @login_required

@@ -167,27 +167,24 @@
 
 <script>
     const ORDER_ID = "{{ order_id }}";
-    const EXPIRES_AT = "{{ expires_at }}";
+    let remaining = parseInt("{{ remaining_seconds }}") || 0;
 
     // Countdown Timer
-    function startTimer() {
-        const expiry = new Date(EXPIRES_AT);
+    function updateTimer() {
         const timerEl = document.getElementById('timer');
-        
-        setInterval(() => {
-            const now = new Date();
-            const diff = expiry - now;
-            if (diff <= 0) {
-                timerEl.textContent = "EXPIRED";
-                document.getElementById('submitBtn').disabled = true;
-                return;
-            }
-            const mins = Math.floor(diff / 60000);
-            const secs = Math.floor((diff % 60000) / 1000);
-            timerEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
-        }, 1000);
+        if (remaining <= 0) {
+            timerEl.textContent = "EXPIRED";
+            document.getElementById('submitBtn').disabled = true;
+            return;
+        }
+        const mins = Math.floor(remaining / 60);
+        const secs = Math.floor(remaining % 60);
+        timerEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+        remaining--;
     }
-    startTimer();
+    
+    updateTimer(); // Initial call
+    setInterval(updateTimer, 1000);
 
     // Poll for payment status every 3 seconds
     let polling = setInterval(async () => {
