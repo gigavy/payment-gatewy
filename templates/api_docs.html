@@ -69,7 +69,7 @@
                 <p>Welcome to our developer-first REST API. Our architecture is designed to allow you to accept zero-commission UPI payments with absolute enterprise reliability.</p>
                 <p>The API is organized around REST, accepts <code class="bg-slate-100 px-1 py-0.5 rounded text-primary">application/json</code> encoded requests, returns JSON-encoded responses, and utilizes standard HTTP response codes.</p>
                 <h4 class="font-bold text-slate-800 text-base mt-6">Authentication</h4>
-                <p>All endpoints are authenticated using your secret key. You must pass this key in the header <code class="bg-slate-100 px-1 py-0.5 rounded text-primary font-bold">X-Fam-Key</code> for every request. If omitted or invalid, the API returns <code class="bg-red-50 text-red-600 px-1 py-0.5 rounded">401 Unauthorized</code>.</p>
+                <p>All endpoints are authenticated using your secret key. You must pass this key in the header <code class="bg-slate-100 px-1 py-0.5 rounded text-primary font-bold">X-Nova-Key</code> for every request. If omitted or invalid, the API returns <code class="bg-red-50 text-red-600 px-1 py-0.5 rounded">401 Unauthorized</code>.</p>
             </div>
         </div>
 
@@ -141,7 +141,7 @@
                     </div>
                     <div class="bg-slate-900 rounded-b-lg p-4 font-mono text-xs text-blue-300 overflow-x-auto snippet-content" id="snippet-curl">
 <pre>curl -X POST {{ request.host_url.rstrip('/') }}/api/create-order \
-  -H "X-Fam-Key: {{ user_info.api_key if user_info and user_info.api_key else 'YOUR_API_KEY' }}" \
+  -H "X-Nova-Key: {{ user_info.api_key if user_info and user_info.api_key else 'YOUR_API_KEY' }}" \
   -H "Content-Type: application/json" \
   -d '{
     "amount": "100.00",
@@ -157,7 +157,7 @@ axios.post('{{ request.host_url.rstrip('/') }}/api/create-order', {
   order_id: "ORD_20260914_7702",
   callback_url: "https://yourwebsite.com/webhook"
 }, {
-  headers: { 'X-Fam-Key': '{{ user_info.api_key if user_info and user_info.api_key else 'YOUR_API_KEY' }}' }
+  headers: { 'X-Nova-Key': '{{ user_info.api_key if user_info and user_info.api_key else 'YOUR_API_KEY' }}' }
 }).then(res => console.log(res.data));</pre>
                     </div>
                     <div class="bg-slate-900 rounded-b-lg p-4 font-mono text-xs text-blue-300 overflow-x-auto snippet-content hidden" id="snippet-python">
@@ -165,7 +165,7 @@ axios.post('{{ request.host_url.rstrip('/') }}/api/create-order', {
 res = requests.post(
     "{{ request.host_url.rstrip('/') }}/api/create-order",
     json={"amount": "100.00", "order_id": "ORD_20260914_7702"},
-    headers={"X-Fam-Key": "{{ user_info.api_key if user_info and user_info.api_key else 'YOUR_API_KEY' }}"}
+    headers={"X-Nova-Key": "{{ user_info.api_key if user_info and user_info.api_key else 'YOUR_API_KEY' }}"}
 )
 print(res.json())</pre>
                     </div>
@@ -177,9 +177,9 @@ print(res.json())</pre>
   <span class="text-emerald-400">"status"</span>: <span class="text-yellow-300">"success"</span>,
   <span class="text-emerald-400">"message"</span>: <span class="text-yellow-300">"Order created successfully"</span>,
   <span class="text-emerald-400">"data"</span>: {
-    <span class="text-emerald-400">"payment_url"</span>: <span class="text-yellow-300">"{{ request.host_url.rstrip('/') }}/pay/FAM12345678"</span>,
+    <span class="text-emerald-400">"payment_url"</span>: <span class="text-yellow-300">"{{ request.host_url.rstrip('/') }}/pay/NOVA12345678"</span>,
     <span class="text-emerald-400">"order_id"</span>: <span class="text-yellow-300">"ORD_20260914_7702"</span>,
-    <span class="text-emerald-400">"token"</span>: <span class="text-yellow-300">"FAM12345678"</span>,
+    <span class="text-emerald-400">"token"</span>: <span class="text-yellow-300">"NOVA12345678"</span>,
     <span class="text-emerald-400">"amount"</span>: <span class="text-orange-400">100.00</span>
   }
 }</pre>
@@ -213,7 +213,7 @@ print(res.json())</pre>
     <span class="text-emerald-400">"amount"</span>: <span class="text-orange-400">100.00</span>,
     <span class="text-emerald-400">"payment_status"</span>: <span class="text-yellow-300">"success"</span>,
     <span class="text-emerald-400">"utr"</span>: <span class="text-yellow-300">"123456789012"</span>,
-    <span class="text-emerald-400">"gateway_txn_id"</span>: <span class="text-yellow-300">"FAM12345678"</span>
+    <span class="text-emerald-400">"gateway_txn_id"</span>: <span class="text-yellow-300">"NOVA12345678"</span>
   }
 }</pre>
                 </div>
@@ -231,7 +231,7 @@ print(res.json())</pre>
                 <div class="prose prose-slate prose-sm max-w-none text-slate-600 space-y-4 mb-6">
                     <p>UPI transactions rely on asynchronous banking switches. Therefore, you must rely on webhooks for finality. Do not fulfill orders based solely on synchronous redirects.</p>
                     <p>When a payment completes, we transmit a POST request to your <code class="bg-slate-100 px-1 py-0.5 rounded text-primary">callback_url</code>. To prevent forged requests, we cryptographically sign every payload using <strong>HMAC-SHA256</strong>.</p>
-                    <p>The signature is transmitted in the <code class="bg-slate-100 px-1 py-0.5 rounded text-primary font-bold">X-FamGateway-Signature</code> header. You must reconstruct the HMAC hash using your Secret API Key and compare it using a constant-time equality function.</p>
+                    <p>The signature is transmitted in the <code class="bg-slate-100 px-1 py-0.5 rounded text-primary font-bold">X-NovaPay-Signature</code> header. You must reconstruct the HMAC hash using your Secret API Key and compare it using a constant-time equality function.</p>
                 </div>
                 
                 <div class="bg-slate-800 rounded-lg p-4 font-mono text-[11px] text-emerald-400 overflow-x-auto">
@@ -339,12 +339,12 @@ Mujhe apni website/app me Payment Gateway fully integrate karna hai. Requirement
 - Sirf EK single HTML file me pura kaam (inline CSS + inline JS).
 - Upar di gayi API details ke basis par pura end-to-end payment flow banao:
 1. Create Order — API call: POST {{ request.host_url.rstrip('/') }}/api/create-order
-Headers: X-Fam-Key: {{ user_info.api_key if user_info and user_info.api_key else 'YOUR_API_KEY' }}
+Headers: X-Nova-Key: {{ user_info.api_key if user_info and user_info.api_key else 'YOUR_API_KEY' }}
 Body: {"amount": "100.00", "order_id": "ORD_123"}
 2. Redirect — API response me mile payment_url par bhejo.
 3. Verify — Wapas aane par POST {{ request.host_url.rstrip('/') }}/api/check-status call karo.
 Body: {"order_id": "ORD_123"}
-Headers: X-Fam-Key: {{ user_info.api_key if user_info and user_info.api_key else 'YOUR_API_KEY' }}
+Headers: X-Nova-Key: {{ user_info.api_key if user_info and user_info.api_key else 'YOUR_API_KEY' }}
 </textarea>
                 <button onclick="copyAiPrompt()" class="absolute right-4 bottom-4 px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 transition shadow-sm">
                     Copy Prompt

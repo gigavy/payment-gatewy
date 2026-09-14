@@ -396,6 +396,8 @@ def init_db():
             except Exception:
                 conn.rollback()
 
+    c.execute("UPDATE users SET api_key = REPLACE(api_key, 'FAM_', 'NOVA_') WHERE api_key LIKE 'FAM_%'")
+    c.execute("UPDATE transactions SET txn_id = REPLACE(txn_id, 'FAM', 'NOVA') WHERE txn_id LIKE 'FAM%'")
     conn.commit()
     conn.close()
 
@@ -459,7 +461,7 @@ def save_user_account(user_id, upi_id, gmail, app_pass, provider='fampay'):
     c = conn.cursor(cursor_factory=DictCursor)
     c.execute("SELECT api_key FROM users WHERE user_id = %s", (user_id,))
     row = c.fetchone()
-    api_key = row[0] if row and row[0] else "FAM_" + uuid.uuid4().hex + uuid.uuid4().hex[:12]
+    api_key = row[0] if row and row[0] else "NOVA_" + uuid.uuid4().hex + uuid.uuid4().hex[:12]
     c.execute('''UPDATE users SET upi_id=%s, gmail=%s, app_pass=%s, api_key=%s, provider=%s WHERE user_id=%s''', 
               (upi_id, gmail, encrypt_pass(app_pass), api_key, provider, user_id))
     conn.commit()
@@ -1184,7 +1186,7 @@ def preview_checkout():
     business_website = user_info.get('business_website') or ""
     
     return render_template('checkout.html',
-                           txn_id="FAM12345678",
+                           txn_id="NOVA12345678",
                            amount=499.00,
                            upi_id=upi_id,
                            display_name=display_name,
@@ -1813,7 +1815,7 @@ def generate_link():
     except Exception:
         return redirect(url_for('payment_links', error='Invalid amount or expiry'))
 
-    txn_id = f"FAM{int(time.time())}{uuid.uuid4().hex[:4].upper()}"
+    txn_id = f"NOVA{int(time.time())}{uuid.uuid4().hex[:4].upper()}"
     now = datetime.now()
     expires = now + timedelta(minutes=expiry_mins)
 
@@ -1886,11 +1888,11 @@ def export_transactions():
 
 @app.route('/api/create-order', methods=['POST'])
 def api_create_order():
-    api_key = request.headers.get('X-Fam-Key') or request.headers.get('Authorization') or (request.json.get('api_key') if request.is_json else None)
+    api_key = request.headers.get('X-Nova-Key') or request.headers.get('X-Fam-Key') or request.headers.get('Authorization') or (request.json.get('api_key') if request.is_json else None)
     if api_key and api_key.startswith('Bearer '):
         api_key = api_key[7:].strip()
     if not api_key:
-        return jsonify({"status": "error", "message": "Missing API Key header (X-Fam-Key)"}), 401
+        return jsonify({"status": "error", "message": "Missing API Key header (X-Nova-Key)"}), 401
         
     conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
     c = conn.cursor(cursor_factory=DictCursor)
@@ -1926,7 +1928,7 @@ def api_create_order():
     except ValueError:
         return jsonify({"status": "error", "message": "Invalid amount"}), 400
 
-    txn_id = f"FAM{int(time.time())}{uuid.uuid4().hex[:4].upper()}"
+    txn_id = f"NOVA{int(time.time())}{uuid.uuid4().hex[:4].upper()}"
     now = datetime.now()
     expires = now + timedelta(minutes=merchant_ttl)
 
@@ -2138,7 +2140,7 @@ def checkout_page_legacy():
     except ValueError:
         expiry_mins = merchant_ttl
 
-    txn_id = f"FAM{int(time.time())}{uuid.uuid4().hex[:4].upper()}"
+    txn_id = f"NOVA{int(time.time())}{uuid.uuid4().hex[:4].upper()}"
     now = datetime.now()
     expires = now + timedelta(minutes=expiry_mins)
 
@@ -2190,11 +2192,11 @@ def submit_utr():
 
 @app.route('/api/check-status', methods=['POST'])
 def api_check_status():
-    api_key = request.headers.get('X-Fam-Key') or request.headers.get('Authorization') or (request.json.get('api_key') if request.is_json else None)
+    api_key = request.headers.get('X-Nova-Key') or request.headers.get('X-Fam-Key') or request.headers.get('Authorization') or (request.json.get('api_key') if request.is_json else None)
     if api_key and api_key.startswith('Bearer '):
         api_key = api_key[7:].strip()
     if not api_key:
-        return jsonify({"status": "error", "message": "Missing API Key header (X-Fam-Key)"}), 401
+        return jsonify({"status": "error", "message": "Missing API Key header (X-Nova-Key)"}), 401
 
     data = request.json or {}
     order_id = data.get('order_id')
@@ -2811,7 +2813,7 @@ def api_docs():
 @login_required
 def regenerate_key():
     user_id = session['user_id']
-    new_api_key = 'FAM' + secrets.token_hex(16).upper()
+    new_api_key = 'NOVA_' + secrets.token_hex(16).upper()
     conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
     c = conn.cursor(cursor_factory=DictCursor)
     c.execute('UPDATE users SET api_key = %s WHERE user_id = %s', (new_api_key, user_id))
