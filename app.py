@@ -2861,6 +2861,12 @@ def upgrade_plan():
 
 
 
+@app.route('/admin/settings/disconnect_youtube', methods=['POST'])
+@admin_required
+def admin_disconnect_youtube():
+    set_sys_setting('youtube_link', '')
+    return redirect('/admin/settings?success=YouTube+video+removed')
+
 @app.route('/admin/settings/disconnect_payment', methods=['POST'])
 @admin_required
 def admin_disconnect_payment():
