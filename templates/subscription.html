@@ -85,7 +85,16 @@
         <h1 class="text-2xl font-black text-slate-800 flex items-center gap-3">
             <i class="fa-solid fa-crown text-orange-400"></i> Subscription Plans
         </h1>
-        <p class="text-xs text-slate-500 mt-1">Upgrade your plan to generate more payment links.</p>
+        <p class="text-xs text-slate-500 mt-1 mb-3">Upgrade your plan to generate more payment links.</p>
+        <div class="px-3 py-2 bg-blue-50 text-blue-800 rounded-lg text-sm border border-blue-100 inline-flex items-center gap-2">
+            <i class="fa-solid fa-bolt"></i> 
+            <strong>Current Plan:</strong> {{ user_info.plan_name }}
+            {% if user_info.plan_expiry %}
+                <span class="ml-2 text-blue-600"><i class="fa-regular fa-clock"></i> Expires: {{ user_info.plan_expiry[:10] }}</span>
+            {% else %}
+                <span class="ml-2 text-blue-600"><i class="fa-solid fa-rotate"></i> Renews weekly</span>
+            {% endif %}
+        </div>
     </div>
 </div>
 
@@ -125,11 +134,15 @@
             <div class="feature-item"><i class="fa-regular fa-circle-check check-icon text-blue-500"></i> <span class="text-slate-700">Custom Branding</span></div>
             <div class="feature-item"><i class="fa-regular fa-circle-check check-icon text-blue-500"></i> <span class="text-slate-700">Email Support</span></div>
         </div>
+        {% if 'Basic' in user_info.plan_name %}
+        <button disabled class="btn-sub bg-slate-100 text-slate-400 border-slate-100 cursor-not-allowed">Plan Active</button>
+        {% else %}
         <form action="/upgrade_plan" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="plan_name" value="Basic">
             <button type="submit" class="btn-sub dark">Upgrade to Basic <i class="fa-solid fa-arrow-right text-xs"></i></button>
         </form>
+        {% endif %}
     </div>
 
     <!-- Pro -->
@@ -147,11 +160,15 @@
             <div class="feature-item"><i class="fa-regular fa-circle-check check-icon text-purple-500"></i> <span class="text-slate-700">Custom Branding</span></div>
             <div class="feature-item"><i class="fa-regular fa-circle-check check-icon text-purple-500"></i> <span class="text-slate-700">Priority Support</span></div>
         </div>
+        {% if 'Pro' in user_info.plan_name %}
+        <button disabled class="btn-sub bg-slate-100 text-slate-400 border-slate-100 cursor-not-allowed">Plan Active</button>
+        {% else %}
         <form action="/upgrade_plan" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="plan_name" value="Pro">
             <button type="submit" class="btn-sub">Upgrade to Pro <i class="fa-solid fa-arrow-right text-xs"></i></button>
         </form>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
