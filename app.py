@@ -2527,7 +2527,7 @@ def monitor_gmails():
                                     body = payload
 
                             text = str(msg.get("Subject", "")) + " " + body
-                            print(f"[IMAP] Raw Text Snippet: {text[:200].strip()}")
+                            print(f"[IMAP] Raw Text Snippet: {text[:200].strip()}", flush=True)
                             
                             amt_match = re.search(r'(?:Rs\.?|INR|\u20B9)\s*([\d,]+\.?\d*)', text, re.IGNORECASE)
                             utr_match = re.search(r'(?:UPI\s*Ref(?:erence)?\s*(?:No\.?)?|UTR|Txn\s*ID|Transaction\s*ID|RRN|Order\s*ID|Reference\s*ID|Ref\s*No\.?)\s*[:.-]?\s*([A-Za-z0-9]{8,30})', text, re.IGNORECASE)
@@ -2535,7 +2535,7 @@ def monitor_gmails():
                             if amt_match:
                                 amount = float(amt_match.group(1).replace(',', ''))
                                 utr = utr_match.group(1) if utr_match else f"AUTO_{int(time.time())}"
-                                print(f"[IMAP] SUCCESS - Extracted Amount: {amount} | UTR: {utr}")
+                                print(f"[IMAP] SUCCESS - Extracted Amount: {amount} | UTR: {utr}", flush=True)
                                 add_sys_log(user_id, f"Parsed Payment: ₹{amount} (UTR: {utr})")
 
                                 conn_db = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
@@ -2549,10 +2549,10 @@ def monitor_gmails():
                                 
                                 if row:
                                     t_id, t_status, t_cb, t_m_id, t_exp = row
-                                    print(f"[IMAP] Found exact UTR match for Txn: {t_id}")
+                                    print(f"[IMAP] Found exact UTR match for Txn: {t_id}", flush=True)
                                     # Hard Gate: Expire order if time crossed
                                     if t_exp and now_str > t_exp:
-                                        print(f"[IMAP] Hard reject: Transaction expired")
+                                        print(f"[IMAP] Hard reject: Transaction expired", flush=True)
                                         c_db.execute("UPDATE transactions SET status='expired' WHERE txn_id=%s", (t_id,))
                                         conn_db.commit()
                                         add_sys_log(user_id, f"HARD REJECT: Payment with UTR {utr} arrived after expiry window ({t_exp}). Marked as expired.")
@@ -2561,10 +2561,10 @@ def monitor_gmails():
                                         conn_db.commit()
                                         txn_completed_now = True
                                         completed_txn = (t_id, 'completed', t_cb, t_m_id)
-                                        print(f"[IMAP] Verified successfully via UTR match!")
+                                        print(f"[IMAP] Verified successfully via UTR match!", flush=True)
                                 else:
                                     # Amount-based fallback (if UTR not submitted by user yet)
-                                    print(f"[IMAP] No UTR match, attempting Amount Fallback for user {user_id}, amount {amount}...")
+                                    print(f"[IMAP] No UTR match, attempting Amount Fallback for user {user_id}, amount {amount}...", flush=True)
                                     c_db.execute("""SELECT txn_id, callback_url, merchant_order_id, expires_at 
                                                     FROM transactions 
                                                     WHERE user_id=%s AND status='pending' AND ABS(amount - %s) < 0.01 
@@ -2573,9 +2573,9 @@ def monitor_gmails():
                                     pending_txn = c_db.fetchone()
                                     if pending_txn:
                                         p_id, p_cb, p_m_id, p_exp = pending_txn
-                                        print(f"[IMAP] Found pending transaction {p_id} matching amount!")
+                                        print(f"[IMAP] Found pending transaction {p_id} matching amount!", flush=True)
                                         if p_exp and now_str > p_exp:
-                                            print(f"[IMAP] Hard reject: Transaction expired")
+                                            print(f"[IMAP] Hard reject: Transaction expired", flush=True)
                                             c_db.execute("UPDATE transactions SET status='expired' WHERE txn_id=%s", (p_id,))
                                             conn_db.commit()
                                             add_sys_log(user_id, f"HARD REJECT: Amount match ₹{amount} arrived after order expiry ({p_exp}). Marked as expired.")
@@ -2584,9 +2584,9 @@ def monitor_gmails():
                                             conn_db.commit()
                                             txn_completed_now = True
                                             completed_txn = (p_id, 'completed', p_cb, p_m_id)
-                                            print(f"[IMAP] Verified successfully via Amount match!")
+                                            print(f"[IMAP] Verified successfully via Amount match!", flush=True)
                                     else:
-                                        print(f"[IMAP] FAILED: No pending transaction found for user {user_id} with amount {amount}")
+                                        print(f"[IMAP] FAILED: No pending transaction found for user {user_id} with amount {amount}", flush=True)
                                         
                                 conn_db.close()
                                 
@@ -2628,18 +2628,18 @@ def monitor_gmails():
                                     if completed_txn[2]:
                                         threading.Thread(target=send_webhook, args=(user_id, completed_txn[2], completed_txn[0], completed_txn[3], amount, utr)).start()
                             else:
-                                print(f"[IMAP] FAILED TO EXTRACT AMOUNT. Raw email: {text[:200]}")
+                                print(f"[IMAP] FAILED TO EXTRACT AMOUNT. Raw email: {text[:200]}", flush=True)
                                 add_sys_log(user_id, f"Regex failed! Unrecognized Email format: {text[:100]}...")
                                 
 
                                     
                 except Exception as e:
-                    print(f"[IMAP] Fatal error for user {user_id} ({gmail_user}): {e}")
+                    print(f"[IMAP] Fatal error for user {user_id} ({gmail_user}): {e}", flush=True)
                     # If any error (e.g. connection drop), remove from persistent dict to force reconnect next loop
                     if user_id in imap_connections:
                         del imap_connections[user_id]
         except Exception as e:
-            print(f"[IMAP] Outer loop fatal error: {e}")
+            print(f"[IMAP] Outer loop fatal error: {e}", flush=True)
             pass
         time.sleep(1.5)
 
