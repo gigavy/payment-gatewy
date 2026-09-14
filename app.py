@@ -492,7 +492,7 @@ def get_sys_setting(key, default=None):
 def set_sys_setting(key, value):
     conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
     c = conn.cursor(cursor_factory=DictCursor)
-    c.execute("UPDATE system_settings SET value=%s WHERE key=%s", (value, key))
+    c.execute("INSERT INTO system_settings (key, value) VALUES (%s, %s) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", (key, value))
     conn.commit()
     conn.close()
 
