@@ -603,7 +603,16 @@ def admin_settings():
         
     if g_client_id is not None: set_sys_setting('google_client_id', g_client_id)
     if g_client_secret is not None: set_sys_setting('google_client_secret', g_client_secret)
-    if yt_link is not None: set_sys_setting('youtube_link', yt_link)
+    if yt_link is not None:
+        yt_link = yt_link.strip()
+        if yt_link:
+            if "youtu.be/" in yt_link:
+                vid_id = yt_link.split("youtu.be/")[1].split("?")[0]
+                yt_link = f"https://www.youtube.com/embed/{vid_id}"
+            elif "youtube.com/watch" in yt_link and "v=" in yt_link:
+                vid_id = yt_link.split("v=")[1].split("&")[0]
+                yt_link = f"https://www.youtube.com/embed/{vid_id}"
+        set_sys_setting('youtube_link', yt_link)
     if wa_number is not None: set_sys_setting('support_whatsapp', wa_number)
     
     admin_upi = request.form.get('admin_upi_id')
@@ -1057,6 +1066,8 @@ def dashboard():
   
     conn.close()
     
+    yt_link = get_sys_setting('youtube_link', '')
+    
     return render_template('dashboard.html', 
                            user_info=user_info, 
                            total_count=total_count or 0, 
@@ -1064,6 +1075,7 @@ def dashboard():
                            txns=txns,
                            chart_labels=chart_labels,
                            chart_data=chart_data,
+                           yt_link=yt_link,
                            error=error,
                            success=success)
 
