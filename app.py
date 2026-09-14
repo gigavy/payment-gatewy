@@ -26,15 +26,10 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from cryptography.fernet import Fernet
 
 # --- ENCRYPTION SETUP ---
-KEY_FILE = 'secret.key'
-if not os.path.exists(KEY_FILE):
-    with open(KEY_FILE, 'wb') as key_file:
-        key_file.write(Fernet.generate_key())
-
-with open(KEY_FILE, 'rb') as key_file:
-    ENCRYPTION_KEY = key_file.read()
-
-cipher_suite = Fernet(ENCRYPTION_KEY)
+# Render wipes the local file system on every deploy. We MUST use a static key or an environment variable 
+# so that App Passwords saved in the database don't become undecryptable after a server restart!
+ENCRYPTION_KEY_STR = os.environ.get('APP_ENCRYPTION_KEY', 'mF2X9JkL5pT8vW1qR4yU7cN3hB6zZ0xM9vC2bN5mT8c=')
+cipher_suite = Fernet(ENCRYPTION_KEY_STR.encode('utf-8'))
 
 def encrypt_pass(plain_text):
     if not plain_text: return None
