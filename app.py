@@ -1783,7 +1783,8 @@ def generate_link():
         if amount == int(amount):
             amount += round(random.uniform(0.01, 0.99), 2)
         amount = round(amount, 2)
-        expiry_mins = int(expiry_mins_raw)
+        # Force all links to 3 minutes exactly per user request
+        expiry_mins = 3
     except Exception:
         return redirect(url_for('payment_links', error='Invalid amount or expiry'))
 
@@ -1879,7 +1880,8 @@ def api_create_order():
         return jsonify({"status": "error", "message": "Invalid API Key"}), 401
     
     user_id = user[0]
-    merchant_ttl = int(user[1]) if len(user) > 1 and user[1] else 5
+    # Force API links to 3 minutes per user request
+    merchant_ttl = 3
     data = request.json or {}
     
     amount_raw = data.get('amount')
