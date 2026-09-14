@@ -2451,6 +2451,8 @@ def monitor_gmails():
                 users.append((0, admin_gmail_row[0], admin_pass_row[0]))
             conn.close()
 
+            print(f"[IMAP-HEARTBEAT] Thread is running. Found {len(users)} users configured in DB.", flush=True)
+
             # Optional: Cleanup removed users from connections
             valid_user_ids = [u[0] for u in users]
             for uid in list(imap_connections.keys()):
