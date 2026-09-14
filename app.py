@@ -310,6 +310,29 @@ def init_db():
             expires_at TIMESTAMP
         )
     ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS subscription_orders (
+            order_id TEXT PRIMARY KEY,
+            user_id INTEGER,
+            plan_name TEXT,
+            amount REAL,
+            status TEXT DEFAULT 'pending',
+            utr TEXT,
+            created_at TIMESTAMP,
+            expires_at TIMESTAMP,
+            paid_at TIMESTAMP
+        )
+    ''')
+    conn.commit()
+
+    # Subscription plan price defaults
+    c.execute("INSERT INTO system_settings (key, value) VALUES ('plan_price_Basic', '30') ON CONFLICT (key) DO NOTHING")
+    c.execute("INSERT INTO system_settings (key, value) VALUES ('plan_price_Pro', '60') ON CONFLICT (key) DO NOTHING")
+    # Admin platform UPI settings
+    c.execute("INSERT INTO system_settings (key, value) VALUES ('admin_upi_id', '') ON CONFLICT (key) DO NOTHING")
+    c.execute("INSERT INTO system_settings (key, value) VALUES ('admin_upi_display_name', 'NovaPay') ON CONFLICT (key) DO NOTHING")
+    c.execute("INSERT INTO system_settings (key, value) VALUES ('admin_payment_gmail', '') ON CONFLICT (key) DO NOTHING")
+    c.execute("INSERT INTO system_settings (key, value) VALUES ('admin_payment_app_pass', '') ON CONFLICT (key) DO NOTHING")
     conn.commit()
 
     # 2. Dynamic column migrations for pre-existing databases
@@ -587,6 +610,21 @@ def admin_settings():
     if g_client_secret is not None: set_sys_setting('google_client_secret', g_client_secret)
     if yt_link is not None: set_sys_setting('youtube_link', yt_link)
     if wa_number is not None: set_sys_setting('support_whatsapp', wa_number)
+    
+    # Platform Payment Settings (for subscription payments)
+    admin_upi = request.form.get('admin_upi_id')
+    admin_upi_name = request.form.get('admin_upi_display_name')
+    admin_pay_gmail = request.form.get('admin_payment_gmail')
+    admin_pay_pass = request.form.get('admin_payment_app_pass')
+    price_basic = request.form.get('plan_price_Basic')
+    price_pro = request.form.get('plan_price_Pro')
+    
+    if admin_upi is not None: set_sys_setting('admin_upi_id', admin_upi)
+    if admin_upi_name is not None: set_sys_setting('admin_upi_display_name', admin_upi_name)
+    if admin_pay_gmail is not None: set_sys_setting('admin_payment_gmail', admin_pay_gmail)
+    if admin_pay_pass and len(admin_pay_pass) > 2: set_sys_setting('admin_payment_app_pass', encrypt_pass(admin_pay_pass))
+    if price_basic is not None: set_sys_setting('plan_price_Basic', price_basic)
+    if price_pro is not None: set_sys_setting('plan_price_Pro', price_pro)
         
     return redirect('/admin/settings?success=Settings updated')
 
@@ -600,7 +638,15 @@ def admin_settings_view():
     g_client_secret = get_sys_setting('google_client_secret', '')
     yt_link = get_sys_setting('youtube_link', '')
     wa_number = get_sys_setting('support_whatsapp', '')
-    return render_template('admin_settings.html', maintenance_mode=m_mode, smtp_email=smtp_email, smtp_pass=smtp_pass, g_client_id=g_client_id, g_client_secret=g_client_secret, yt_link=yt_link, wa_number=wa_number)
+    # Platform Payment Settings
+    admin_upi = get_sys_setting('admin_upi_id', '')
+    admin_upi_name = get_sys_setting('admin_upi_display_name', 'NovaPay')
+    admin_pay_gmail = get_sys_setting('admin_payment_gmail', '')
+    admin_pay_pass_raw = get_sys_setting('admin_payment_app_pass', '')
+    admin_pay_pass = decrypt_pass(admin_pay_pass_raw) if admin_pay_pass_raw else ''
+    price_basic = get_sys_setting('plan_price_Basic', '30')
+    price_pro = get_sys_setting('plan_price_Pro', '60')
+    return render_template('admin_settings.html', maintenance_mode=m_mode, smtp_email=smtp_email, smtp_pass=smtp_pass, g_client_id=g_client_id, g_client_secret=g_client_secret, yt_link=yt_link, wa_number=wa_number, admin_upi=admin_upi, admin_upi_name=admin_upi_name, admin_pay_gmail=admin_pay_gmail, admin_pay_pass=admin_pay_pass, price_basic=price_basic, price_pro=price_pro)
 
 @app.route('/admin/logs')
 @admin_required
@@ -2376,7 +2422,16 @@ def monitor_gmails():
             conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
             c = conn.cursor(cursor_factory=DictCursor)
             c.execute("SELECT user_id, gmail, app_pass FROM users WHERE gmail IS NOT NULL AND app_pass IS NOT NULL")
-            users = c.fetchall()
+            users = list(c.fetchall())
+            
+            # Also add the Admin's payment Gmail for subscription verification
+            c.execute("SELECT value FROM system_settings WHERE key='admin_payment_gmail'")
+            admin_gmail_row = c.fetchone()
+            c.execute("SELECT value FROM system_settings WHERE key='admin_payment_app_pass'")
+            admin_pass_row = c.fetchone()
+            if admin_gmail_row and admin_gmail_row[0] and admin_pass_row and admin_pass_row[0]:
+                # Use user_id 0 as sentinel for admin subscription account
+                users.append((0, admin_gmail_row[0], admin_pass_row[0]))
             conn.close()
 
             # Optional: Cleanup removed users from connections
@@ -2527,6 +2582,56 @@ def monitor_gmails():
                                     
                                     if completed_txn[2]:
                                         threading.Thread(target=send_webhook, args=(user_id, completed_txn[2], completed_txn[0], completed_txn[3], amount, utr)).start()
+                                
+                                # === SUBSCRIPTION ORDER MATCHING ===
+                                # Check if this payment matches a pending subscription order
+                                try:
+                                    conn_sub = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+                                    c_sub = conn_sub.cursor(cursor_factory=DictCursor)
+                                    sub_matched = False
+                                    
+                                    # First try UTR match
+                                    c_sub.execute("SELECT order_id, user_id, plan_name, amount, status, expires_at FROM subscription_orders WHERE utr=%s AND status='pending'", (utr,))
+                                    sub_row = c_sub.fetchone()
+                                    
+                                    if not sub_row:
+                                        # Fallback: amount match for pending orders without UTR
+                                        c_sub.execute("""SELECT order_id, user_id, plan_name, amount, status, expires_at 
+                                                        FROM subscription_orders 
+                                                        WHERE status='pending' AND ABS(amount - %s) < 0.01 
+                                                          AND (utr IS NULL OR utr='')
+                                                        ORDER BY created_at DESC LIMIT 1""", (amount,))
+                                        sub_row = c_sub.fetchone()
+                                    
+                                    if sub_row:
+                                        s_order_id, s_user_id, s_plan, s_amt, s_status, s_exp = sub_row
+                                        now_sub = datetime.now().isoformat()
+                                        
+                                        # Check expiry
+                                        expired = False
+                                        try:
+                                            if s_exp and now_sub > str(s_exp):
+                                                c_sub.execute("UPDATE subscription_orders SET status='expired' WHERE order_id=%s", (s_order_id,))
+                                                conn_sub.commit()
+                                                expired = True
+                                        except:
+                                            pass
+                                        
+                                        if not expired:
+                                            # Mark subscription order as completed
+                                            c_sub.execute("UPDATE subscription_orders SET status='completed', utr=%s, paid_at=%s WHERE order_id=%s", (utr, now_sub, s_order_id))
+                                            
+                                            # Upgrade the user's plan!
+                                            plan_expiry = (datetime.now() + timedelta(days=30)).isoformat()
+                                            c_sub.execute("UPDATE users SET plan_name=%s, plan_expiry=%s, links_used=0 WHERE user_id=%s", (s_plan, plan_expiry, s_user_id))
+                                            conn_sub.commit()
+                                            
+                                            add_sys_log(s_user_id, f"Subscription VERIFIED! Upgraded to {s_plan} plan (Order: {s_order_id}, UTR: {utr})")
+                                            sub_matched = True
+                                    
+                                    conn_sub.close()
+                                except Exception as sub_err:
+                                    print(f"Subscription match error: {sub_err}")
                                     
                 except Exception as e:
                     # If any error (e.g. connection drop), remove from persistent dict to force reconnect next loop
@@ -2643,7 +2748,9 @@ def system_logs_api():
 @login_required
 def plans():
     user_info = get_user(session['user_id'])
-    return render_template('subscription.html', user_info=user_info)
+    price_basic = get_sys_setting('plan_price_Basic', '30')
+    price_pro = get_sys_setting('plan_price_Pro', '60')
+    return render_template('subscription.html', user_info=user_info, price_basic=price_basic, price_pro=price_pro)
 
 @app.route('/upgrade_plan', methods=['POST'])
 @login_required
@@ -2651,91 +2758,138 @@ def upgrade_plan():
     target_user_id = session['user_id']
     plan_name = request.form.get('plan_name')
     if plan_name not in ['Basic', 'Pro']:
-        return redirect(url_for('payment_links', error='Invalid plan selected.'))
-        
-    amount = 30.0 if plan_name == 'Basic' else 60.0
+        return redirect(url_for('plans', error='Invalid plan selected.'))
     
-    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
-    c = conn.cursor(cursor_factory=DictCursor)
-    # Find the Admin user (assumed role='admin', or fallback to user_id=1)
-    c.execute("SELECT user_id FROM users WHERE role='admin' ORDER BY user_id ASC LIMIT 1")
-    admin_row = c.fetchone()
-    if not admin_row:
-        # Fallback if no admin is set, fallback to user_id 1
-        admin_row = (1,)
-        
-    admin_user_id = admin_row[0]
+    # Get price from system settings (admin-configurable)
+    price_key = f'plan_price_{plan_name}'
+    amount = float(get_sys_setting(price_key, '30' if plan_name == 'Basic' else '60'))
     
-    txn_id = f"SUB{int(time.time())}{uuid.uuid4().hex[:4].upper()}"
+    # Check if admin UPI is configured
+    admin_upi = get_sys_setting('admin_upi_id', '')
+    if not admin_upi:
+        return redirect(url_for('plans', error='Subscription payments are not configured yet. Please contact admin.'))
+    
+    # Create subscription order
+    order_id = f"sub_{uuid.uuid4().hex[:8]}"
     now = datetime.now()
     expires = now + timedelta(minutes=15)
-    merchant_order_id = f"sub_upgrade|{target_user_id}|{plan_name}"
-    callback_url = f"{request.host_url.rstrip('/')}/api/subscription_webhook"
     
-    c.execute('''INSERT INTO transactions (txn_id, user_id, amount, status, created_at, expires_at, merchant_order_id, callback_url)
-                 VALUES (%s, %s, %s, 'pending', %s, %s, %s, %s)''', 
-              (txn_id, admin_user_id, amount, now.isoformat(), expires.isoformat(), merchant_order_id, callback_url))
-    conn.commit()
-    conn.close()
-    
-    return redirect(f"/pay/{txn_id}")
-
-@app.route('/api/subscription_webhook', methods=['POST'])
-def subscription_webhook():
-    signature = request.headers.get('X-NovaPay-Signature')
-    timestamp = request.headers.get('X-NovaPay-Timestamp')
-    
-    if not signature or not timestamp:
-        return jsonify({'status': 'error', 'message': 'Missing signature'}), 401
-        
-    data = request.json
-    if not data or data.get('status') != 'success':
-        return jsonify({'status': 'ignored'}), 200
-        
-    merchant_order_id = data.get('merchant_order_id', '')
-    if not merchant_order_id.startswith('sub_upgrade|'):
-        return jsonify({'status': 'ignored'}), 200
-        
-    parts = merchant_order_id.split('|')
-    if len(parts) != 3:
-        return jsonify({'status': 'error', 'message': 'Invalid order ID'}), 400
-        
-    target_user_id = parts[1]
-    plan_name = parts[2]
-    
-    # We must verify the signature using the Admin's API key
     conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
     c = conn.cursor(cursor_factory=DictCursor)
-    
-    c.execute("SELECT user_id, api_key FROM users WHERE role='admin' ORDER BY user_id ASC LIMIT 1")
-    admin_row = c.fetchone()
-    if not admin_row:
-        c.execute("SELECT user_id, api_key FROM users WHERE user_id=1")
-        admin_row = c.fetchone()
-        
-    if not admin_row or not admin_row[1]:
-        conn.close()
-        return jsonify({'status': 'error', 'message': 'Admin API key missing'}), 500
-        
-    admin_api_key = admin_row[1]
-    
-    payload_str = request.get_data(as_text=True)
-    sign_material = f"{timestamp}.{payload_str}"
-    expected_sig = hmac.new(admin_api_key.encode('utf-8'), sign_material.encode('utf-8'), hashlib.sha256).hexdigest()
-    
-    if not hmac.compare_digest(signature, expected_sig):
-        conn.close()
-        return jsonify({'status': 'error', 'message': 'Invalid signature'}), 401
-        
-    # Upgrade User
-    # 30 day expiry
-    plan_expiry = (datetime.now() + timedelta(days=30)).isoformat()
-    # RESET links_used to 0 to unlock fresh capacity!
-    c.execute("UPDATE users SET plan_name=%s, plan_expiry=%s, links_used=0 WHERE user_id=%s", (plan_name, plan_expiry, target_user_id))
+    c.execute('''INSERT INTO subscription_orders (order_id, user_id, plan_name, amount, status, created_at, expires_at)
+                 VALUES (%s, %s, %s, %s, 'pending', %s, %s)''',
+              (order_id, target_user_id, plan_name, amount, now.isoformat(), expires.isoformat()))
     conn.commit()
     conn.close()
     
-    return jsonify({'status': 'success'})
+    add_admin_log('subscription', f'User {target_user_id} initiated upgrade to {plan_name} (₹{amount}) - Order: {order_id}')
+    
+    return redirect(f"/subscription/checkout/{order_id}")
+
+@app.route('/subscription/checkout/<order_id>')
+@login_required
+def subscription_checkout(order_id):
+    user_id = session['user_id']
+    
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
+    c.execute("SELECT order_id, user_id, plan_name, amount, status, created_at, expires_at FROM subscription_orders WHERE order_id=%s", (order_id,))
+    order = c.fetchone()
+    conn.close()
+    
+    if not order or order[1] != user_id:
+        return redirect(url_for('plans', error='Order not found.'))
+    
+    if order[4] == 'completed':
+        return redirect(url_for('plans', error='This order has already been completed.'))
+    
+    if order[4] == 'expired':
+        return redirect(url_for('plans', error='This order has expired. Please try again.'))
+    
+    # Check expiry
+    try:
+        exp = datetime.fromisoformat(str(order[6]))
+        if datetime.now() > exp:
+            conn2 = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+            c2 = conn2.cursor(cursor_factory=DictCursor)
+            c2.execute("UPDATE subscription_orders SET status='expired' WHERE order_id=%s", (order_id,))
+            conn2.commit()
+            conn2.close()
+            return redirect(url_for('plans', error='This order has expired. Please try again.'))
+    except:
+        pass
+    
+    admin_upi = get_sys_setting('admin_upi_id', '')
+    admin_name = get_sys_setting('admin_upi_display_name', 'NovaPay')
+    
+    # Build UPI deep link
+    import urllib.parse
+    upi_link = f"upi://pay?pa={urllib.parse.quote(admin_upi)}&pn={urllib.parse.quote(admin_name)}&am={order[3]:.2f}&cu=INR&tn={urllib.parse.quote(f'{order[2]} Plan {order_id}')}"
+    
+    return render_template('subscription_checkout.html',
+                           order_id=order[0],
+                           plan_name=order[2],
+                           amount=order[3],
+                           expires_at=str(order[6]),
+                           upi_link=upi_link,
+                           admin_upi=admin_upi,
+                           admin_name=admin_name)
+
+@app.route('/api/subscription/status/<order_id>')
+@login_required
+def subscription_status(order_id):
+    user_id = session['user_id']
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
+    c.execute("SELECT status FROM subscription_orders WHERE order_id=%s AND user_id=%s", (order_id, user_id))
+    row = c.fetchone()
+    conn.close()
+    if not row:
+        return jsonify({'status': 'not_found'}), 404
+    return jsonify({'status': row[0]})
+
+@app.route('/api/subscription/submit_utr', methods=['POST'])
+@login_required
+def subscription_submit_utr():
+    user_id = session['user_id']
+    order_id = request.form.get('order_id')
+    utr = request.form.get('utr', '').strip()
+    
+    if not order_id or not utr:
+        return jsonify({'status': 'error', 'message': 'Order ID and UTR are required'}), 400
+    
+    conn = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
+    c = conn.cursor(cursor_factory=DictCursor)
+    c.execute("SELECT order_id, user_id, plan_name, amount, status, expires_at FROM subscription_orders WHERE order_id=%s AND user_id=%s", (order_id, user_id))
+    order = c.fetchone()
+    
+    if not order:
+        conn.close()
+        return jsonify({'status': 'error', 'message': 'Order not found'}), 404
+    
+    if order[4] != 'pending':
+        conn.close()
+        return jsonify({'status': 'error', 'message': f'Order is already {order[4]}'}), 400
+    
+    # Check expiry
+    try:
+        exp = datetime.fromisoformat(str(order[5]))
+        if datetime.now() > exp:
+            c.execute("UPDATE subscription_orders SET status='expired' WHERE order_id=%s", (order_id,))
+            conn.commit()
+            conn.close()
+            return jsonify({'status': 'error', 'message': 'Order has expired'}), 400
+    except:
+        pass
+    
+    # Save UTR for IMAP matching
+    c.execute("UPDATE subscription_orders SET utr=%s WHERE order_id=%s", (utr, order_id))
+    conn.commit()
+    conn.close()
+    
+    add_admin_log('subscription', f'User {user_id} submitted UTR {utr} for subscription order {order_id}')
+    
+    return jsonify({'status': 'success', 'message': 'UTR submitted. Verifying payment...'})
 
 def start_background_workers():
     if not getattr(app, '_bg_workers_started', False):

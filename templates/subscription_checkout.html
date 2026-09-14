@@ -1,0 +1,253 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    .checkout-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 1.5rem;
+        padding: 2rem;
+        max-width: 480px;
+        margin: 0 auto;
+        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);
+    }
+    .qr-container {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        text-align: center;
+    }
+    .utr-input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 0.75rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-align: center;
+        letter-spacing: 1px;
+        transition: all 0.2s;
+    }
+    .utr-input:focus {
+        outline: none;
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+    .btn-verify {
+        width: 100%;
+        padding: 0.875rem;
+        background: #0f172a;
+        color: white;
+        font-weight: 700;
+        font-size: 0.875rem;
+        border-radius: 0.75rem;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    .btn-verify:hover { background: #1e293b; }
+    .btn-verify:disabled { background: #94a3b8; cursor: not-allowed; }
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.375rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.7rem;
+        font-weight: 700;
+    }
+    .pulse-dot {
+        width: 8px; height: 8px;
+        background: #f59e0b;
+        border-radius: 50%;
+        animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.5; transform: scale(1.3); }
+    }
+    .success-overlay {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+    .success-overlay.active { display: flex; }
+    .success-box {
+        background: white;
+        border-radius: 1.5rem;
+        padding: 3rem 2rem;
+        text-align: center;
+        max-width: 400px;
+        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+    }
+</style>
+
+<div class="mb-6">
+    <a href="/plans" class="text-sm text-slate-500 hover:text-slate-800 font-bold flex items-center gap-2">
+        <i class="fa-solid fa-chevron-left text-xs"></i> Back to Plans
+    </a>
+</div>
+
+<div class="checkout-card">
+    <!-- Header -->
+    <div class="text-center mb-6">
+        <div class="w-14 h-14 bg-indigo-50 text-primary rounded-2xl flex items-center justify-center text-2xl mx-auto mb-4">
+            <i class="fa-solid fa-crown"></i>
+        </div>
+        <h1 class="text-xl font-black text-slate-800">Upgrade to {{ plan_name }}</h1>
+        <p class="text-xs text-slate-500 mt-1">Complete payment to activate your plan</p>
+    </div>
+
+    <!-- Amount -->
+    <div class="text-center mb-6">
+        <span class="text-4xl font-black text-slate-800">₹{{ "%.0f"|format(amount) }}</span>
+        <span class="text-sm text-slate-500 font-bold ml-1">/ month</span>
+    </div>
+
+    <!-- Status -->
+    <div class="text-center mb-6">
+        <span id="statusBadge" class="status-badge bg-amber-50 text-amber-700 border border-amber-200">
+            <span class="pulse-dot"></span> Waiting for Payment
+        </span>
+    </div>
+
+    <!-- QR Code -->
+    <div class="qr-container mb-6">
+        <div class="mb-3">
+            <img id="qrImage" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={{ upi_link|urlencode }}" alt="UPI QR Code" class="mx-auto rounded-lg" style="width:200px;height:200px;">
+        </div>
+        <p class="text-xs text-slate-500 font-bold">Scan with any UPI app</p>
+        <p class="text-[10px] text-slate-400 mt-1">Pay to: <span class="font-bold text-slate-600">{{ admin_upi }}</span></p>
+    </div>
+
+    <!-- Open in UPI App (Mobile) -->
+    <a href="{{ upi_link }}" class="block w-full text-center py-3 bg-indigo-50 text-primary font-bold text-sm rounded-xl mb-4 hover:bg-indigo-100 transition">
+        <i class="fa-solid fa-mobile-screen mr-1"></i> Open in UPI App
+    </a>
+
+    <!-- Timer -->
+    <div class="text-center mb-6">
+        <p class="text-xs text-slate-500">Expires in <span id="timer" class="font-bold text-red-500">15:00</span></p>
+    </div>
+
+    <hr class="my-6 border-slate-200">
+
+    <!-- UTR Submission -->
+    <div>
+        <label class="block text-xs font-bold text-slate-700 mb-2">Enter UTR / Transaction Reference</label>
+        <input type="text" id="utrInput" class="utr-input mb-3" placeholder="Enter 12-digit UTR number" maxlength="30">
+        <button id="submitBtn" onclick="submitUTR()" class="btn-verify">
+            <i class="fa-solid fa-shield-check"></i> Verify Payment
+        </button>
+        <p id="utrMessage" class="text-xs text-center mt-3 font-bold hidden"></p>
+    </div>
+</div>
+
+<!-- Success Overlay -->
+<div id="successOverlay" class="success-overlay">
+    <div class="success-box">
+        <div class="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-6">
+            <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <h2 class="text-2xl font-black text-slate-800 mb-2">Payment Verified!</h2>
+        <p class="text-sm text-slate-500 mb-6">Your <strong>{{ plan_name }}</strong> plan is now active.</p>
+        <a href="/dashboard" class="inline-block px-8 py-3 bg-primary text-white font-bold text-sm rounded-xl hover:bg-indigo-700 transition">
+            Go to Dashboard <i class="fa-solid fa-arrow-right ml-1"></i>
+        </a>
+    </div>
+</div>
+
+<script>
+    const ORDER_ID = "{{ order_id }}";
+    const EXPIRES_AT = "{{ expires_at }}";
+
+    // Countdown Timer
+    function startTimer() {
+        const expiry = new Date(EXPIRES_AT);
+        const timerEl = document.getElementById('timer');
+        
+        setInterval(() => {
+            const now = new Date();
+            const diff = expiry - now;
+            if (diff <= 0) {
+                timerEl.textContent = "EXPIRED";
+                document.getElementById('submitBtn').disabled = true;
+                return;
+            }
+            const mins = Math.floor(diff / 60000);
+            const secs = Math.floor((diff % 60000) / 1000);
+            timerEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+        }, 1000);
+    }
+    startTimer();
+
+    // Poll for payment status every 3 seconds
+    let polling = setInterval(async () => {
+        try {
+            const resp = await fetch(`/api/subscription/status/${ORDER_ID}`);
+            const data = await resp.json();
+            if (data.status === 'completed') {
+                clearInterval(polling);
+                document.getElementById('statusBadge').innerHTML = '<i class="fa-solid fa-circle-check text-emerald-500"></i> Payment Verified';
+                document.getElementById('statusBadge').className = 'status-badge bg-emerald-50 text-emerald-700 border border-emerald-200';
+                document.getElementById('successOverlay').classList.add('active');
+            } else if (data.status === 'expired') {
+                clearInterval(polling);
+                document.getElementById('statusBadge').innerHTML = '<i class="fa-solid fa-clock text-red-500"></i> Expired';
+                document.getElementById('statusBadge').className = 'status-badge bg-red-50 text-red-700 border border-red-200';
+                document.getElementById('submitBtn').disabled = true;
+            }
+        } catch(e) {}
+    }, 3000);
+
+    // Submit UTR
+    async function submitUTR() {
+        const utr = document.getElementById('utrInput').value.trim();
+        const msgEl = document.getElementById('utrMessage');
+        const btn = document.getElementById('submitBtn');
+        
+        if (!utr || utr.length < 6) {
+            msgEl.textContent = "Please enter a valid UTR number";
+            msgEl.className = "text-xs text-center mt-3 font-bold text-red-500";
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verifying...';
+
+        try {
+            const formData = new FormData();
+            formData.append('order_id', ORDER_ID);
+            formData.append('utr', utr);
+            
+            const resp = await fetch('/api/subscription/submit_utr', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await resp.json();
+            
+            if (data.status === 'success') {
+                msgEl.textContent = "UTR submitted! Waiting for bank confirmation...";
+                msgEl.className = "text-xs text-center mt-3 font-bold text-emerald-600";
+            } else {
+                msgEl.textContent = data.message || "Something went wrong";
+                msgEl.className = "text-xs text-center mt-3 font-bold text-red-500";
+            }
+        } catch(e) {
+            msgEl.textContent = "Network error. Please try again.";
+            msgEl.className = "text-xs text-center mt-3 font-bold text-red-500";
+        }
+        
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-shield-check"></i> Verify Payment';
+    }
+</script>
+{% endblock %}
