@@ -2532,12 +2532,12 @@ def monitor_gmails():
 
                             text = str(msg.get("Subject", "")) + " " + body
                             amt_match = re.search(r'(?:Rs\.?|INR|\u20B9)\s*([\d,]+\.?\d*)', text, re.IGNORECASE)
-                            utr_match = re.search(r'(?:UPI\s*Ref(?:erence)?\s*(?:No\.?)?|UTR|Txn\s*ID|Transaction\s*ID|RRN|Order\s*ID|Reference\s*ID)\s*[:.-]?\s*([A-Za-z0-9]{8,30})', text, re.IGNORECASE)
+                            utr_match = re.search(r'(?:UPI\s*Ref(?:erence)?\s*(?:No\.?)?|UTR|Txn\s*ID|Transaction\s*ID|RRN|Order\s*ID|Reference\s*ID|Ref\s*No\.?)\s*[:.-]?\s*([A-Za-z0-9]{8,30})', text, re.IGNORECASE)
 
-                            if amt_match and utr_match:
+                            if amt_match:
                                 amount = float(amt_match.group(1).replace(',', ''))
-                                utr = utr_match.group(1)
-                                add_sys_log(user_id, f"Parsed Payment: â‚¹{amount} with UTR: {utr}")
+                                utr = utr_match.group(1) if utr_match else f"AUTO_{int(time.time())}"
+                                add_sys_log(user_id, f"Parsed Payment: ₹{amount} (UTR: {utr})")
 
                                 conn_db = psycopg2.connect(os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_vud7GqL6josp@ep-spring-cloud-ayg2dahn-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require'))
                                 c_db = conn_db.cursor(cursor_factory=DictCursor)
